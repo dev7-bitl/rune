@@ -75,6 +75,7 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
 
   function buildExtensions(): Extension[] {
     return [
+        EditorState.allowMultipleSelections.of(true),
         lineNumbers(),
         highlightActiveLineGutter(),
         highlightSpecialChars(),
@@ -88,7 +89,7 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
-        highlightSelectionMatches(),
+        highlightSelectionMatches({ minSelectionLength: 1 }),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         keymap.of([
           { key: "Mod-Shift-z", run: redo, preventDefault: true },

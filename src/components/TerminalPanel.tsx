@@ -156,6 +156,7 @@ function TerminalInstance(props: TerminalInstanceProps) {
   let fitAddon: FitAddon | undefined;
   let unlistenOutput: (() => void) | undefined;
   let unlistenExit: (() => void) | undefined;
+  let resizeObserver: ResizeObserver | undefined;
 
   async function initTerminal() {
     term = new Terminal({
@@ -210,11 +211,22 @@ function TerminalInstance(props: TerminalInstanceProps) {
     initTerminal();
     window.addEventListener("resize", handleResize);
     window.addEventListener("rune-run-script", handleRunScriptEvent);
+    
+    // Watch for direct container resizes (e.g., from user dragging the splitter)
+    resizeObserver = new ResizeObserver(() => {
+      if (props.isActive) {
+        fitAddon?.fit();
+      }
+    });
+    if (terminalRef) {
+      resizeObserver.observe(terminalRef);
+    }
   });
 
   onCleanup(() => {
     window.removeEventListener("resize", handleResize);
     window.removeEventListener("rune-run-script", handleRunScriptEvent);
+    resizeObserver?.disconnect();
     unlistenOutput?.();
     unlistenExit?.();
     term?.dispose();
@@ -227,6 +239,8 @@ function TerminalInstance(props: TerminalInstanceProps) {
   });
 
   createEffect(() => {
+    // Access globalSettings.theme to establish a reactive dependency
+    globalSettings.theme; 
     if (term) {
       term.options.fontSize = globalSettings.terminalFontSize;
       term.options.theme = getTerminalTheme();

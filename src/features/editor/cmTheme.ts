@@ -21,14 +21,19 @@ export function createRuneTheme(): Extension {
       borderLeftColor: "var(--color-accent)",
       borderLeftWidth: "2px",
     },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
-      backgroundColor: "rgba(0, 255, 65, 0.18) !important",
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+      backgroundColor: "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
+    },
+    ".cm-content ::selection": {
+      backgroundColor: "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
     },
     ".cm-activeLine": {
-      backgroundColor: "var(--color-bg-secondary)",
+      backgroundColor: "color-mix(in srgb, var(--color-fg) 5%, transparent)",
     },
     ".cm-selectionMatch": {
-      backgroundColor: "rgba(205, 255, 7, 0.12)",
+      backgroundColor: "rgba(205, 255, 7, 0.25)",
+      borderRadius: "2px",
+      outline: "1px solid rgba(205, 255, 7, 0.4)",
     },
     "&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket": {
       backgroundColor: "rgba(205, 255, 7, 0.2)",
