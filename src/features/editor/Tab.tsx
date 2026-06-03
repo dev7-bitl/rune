@@ -18,7 +18,9 @@ export function Tab(props: TabProps) {
         background: props.isActive ? "var(--color-bg)" : "var(--color-tab-bg)",
         color: props.isActive ? "var(--color-fg)" : "var(--color-fg-muted)",
         "border-right": "1px solid var(--color-border)",
-        "border-bottom": props.isActive ? "1px solid var(--color-bg)" : "1px solid var(--color-border)",
+        "border-bottom": props.isActive
+          ? "1px solid var(--color-bg)"
+          : "1px solid var(--color-border)",
         "margin-bottom": props.isActive ? "-1px" : "0",
         cursor: "pointer",
       }}
@@ -40,7 +42,14 @@ export function Tab(props: TabProps) {
         class="ml-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-bg-tertiary)] transition-opacity"
         onClick={props.onClose}
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+        >
           <line x1="2" y1="2" x2="8" y2="8" />
           <line x1="8" y1="2" x2="2" y2="8" />
         </svg>

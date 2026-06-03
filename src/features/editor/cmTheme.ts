@@ -13,7 +13,8 @@ export function createRuneTheme(): Extension {
     },
     ".cm-content": {
       caretColor: "var(--color-accent)",
-      fontFamily: 'var(--editor-font-family, "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace)',
+      fontFamily:
+        'var(--editor-font-family, "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace)',
       padding: "4px 0",
       userSelect: "text",
     },
@@ -22,10 +23,12 @@ export function createRuneTheme(): Extension {
       borderLeftWidth: "2px",
     },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
+      backgroundColor:
+        "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
     },
     ".cm-content ::selection": {
-      backgroundColor: "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
+      backgroundColor:
+        "color-mix(in srgb, var(--color-accent) 30%, transparent) !important",
     },
     ".cm-activeLine": {
       backgroundColor: "color-mix(in srgb, var(--color-fg) 5%, transparent)",
@@ -155,7 +158,8 @@ export function createRuneTheme(): Extension {
       "& > ul > li": {
         padding: "4px 10px",
         fontSize: "12px",
-        fontFamily: '"JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace',
+        fontFamily:
+          '"JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace',
       },
       "& > ul > li[aria-selected]": {
         backgroundColor: "var(--color-bg-tertiary)",
@@ -165,7 +169,8 @@ export function createRuneTheme(): Extension {
     ".cm-scroller": {
       overflow: "auto",
       scrollbarWidth: "thin",
-      scrollbarColor: "var(--color-scrollbar-thumb) var(--color-scrollbar-track)",
+      scrollbarColor:
+        "var(--color-scrollbar-thumb) var(--color-scrollbar-track)",
     },
   });
 

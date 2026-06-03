@@ -20,6 +20,7 @@ export interface GlobalSettings {
 export interface WorkspaceSettings {
   runCommand: string;
   excludeItems: string[];
+  runMap?: Record<string, string>;
 }
 
 const DEFAULT_GLOBAL: GlobalSettings = {
@@ -33,12 +34,15 @@ const DEFAULT_GLOBAL: GlobalSettings = {
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
   runCommand: "echo 'Hello from Rune!'",
   excludeItems: [".git", "node_modules", ".rune"],
+  runMap: {},
 };
 
-export const [globalSettings, setGlobalSettings] = createStore<GlobalSettings>(DEFAULT_GLOBAL);
-export const [workspaceSettings, setWorkspaceSettings] = createStore<WorkspaceSettings>(DEFAULT_WORKSPACE);
+export const [globalSettings, setGlobalSettings] =
+  createStore<GlobalSettings>(DEFAULT_GLOBAL);
+export const [workspaceSettings, setWorkspaceSettings] =
+  createStore<WorkspaceSettings>(DEFAULT_WORKSPACE);
 
-let workspaceRootPath: string | null = null;
+export let workspaceRootPath: string | null = null;
 let cachedHomeDir: string | null = null;
 
 interface StartupData {
@@ -60,7 +64,9 @@ export async function initGlobalSettings() {
         localStorage.setItem("rune_bg", parsed.customTheme.bg);
       }
     } catch {
-      await mkdir(joinPath(cachedHomeDir, ".rune"), { recursive: true }).catch(() => {});
+      await mkdir(joinPath(cachedHomeDir, ".rune"), { recursive: true }).catch(
+        () => {},
+      );
       await writeTextFile(configPath, JSON.stringify(DEFAULT_GLOBAL, null, 2));
     }
   } catch (e) {
@@ -71,7 +77,9 @@ export async function initGlobalSettings() {
 export async function getHomeDir(): Promise<string> {
   if (cachedHomeDir) return cachedHomeDir;
   // Try batched load_startup first (also reads settings for free)
-  const data: StartupData = await invoke("load_startup", { workspacePath: null });
+  const data: StartupData = await invoke("load_startup", {
+    workspacePath: null,
+  });
   cachedHomeDir = data.home_dir;
   // Also apply any settings that came back
   if (data.global_settings) {
@@ -87,7 +95,10 @@ export async function getHomeDir(): Promise<string> {
   return cachedHomeDir!;
 }
 
-export async function loadAllSettings(workspacePath: string | null): Promise<void> {
+export async function loadAllSettings(
+  workspacePath: string | null,
+): Promise<void> {
+  workspaceRootPath = workspacePath;
   const t0 = performance.now();
   try {
     const data: StartupData = await invoke("load_startup", { workspacePath });
@@ -97,7 +108,10 @@ export async function loadAllSettings(workspacePath: string | null): Promise<voi
       try {
         const parsed = JSON.parse(data.global_settings);
         setGlobalSettings({ ...DEFAULT_GLOBAL, ...parsed });
-        localStorage.setItem("rune_theme", parsed.theme || DEFAULT_GLOBAL.theme);
+        localStorage.setItem(
+          "rune_theme",
+          parsed.theme || DEFAULT_GLOBAL.theme,
+        );
         if (parsed.theme === "custom" && parsed.customTheme?.bg) {
           localStorage.setItem("rune_bg", parsed.customTheme.bg);
         }
@@ -107,13 +121,18 @@ export async function loadAllSettings(workspacePath: string | null): Promise<voi
     if (data.workspace_settings) {
       try {
         const parsed = JSON.parse(data.workspace_settings);
+        if (!parsed.runCommand && (parsed.run || parsed.runScript)) {
+          parsed.runCommand = parsed.run || parsed.runScript;
+        }
         setWorkspaceSettings({ ...DEFAULT_WORKSPACE, ...parsed });
       } catch {}
     } else {
       setWorkspaceSettings({ ...DEFAULT_WORKSPACE });
     }
 
-    console.log(`[rune] loadAllSettings (1 IPC): ${Math.round(performance.now() - t0)}ms`);
+    console.log(
+      `[rune] loadAllSettings (1 IPC): ${Math.round(performance.now() - t0)}ms`,
+    );
   } catch (e) {
     console.error("Failed to load settings", e);
   }
@@ -141,6 +160,9 @@ export async function loadWorkspaceSettings(rootPath: string | null) {
     const configPath = joinPath(rootPath, ".rune", "settings.json");
     const content = await readTextFile(configPath);
     const parsed = JSON.parse(content);
+    if (!parsed.runCommand && (parsed.run || parsed.runScript)) {
+      parsed.runCommand = parsed.run || parsed.runScript;
+    }
     setWorkspaceSettings({ ...DEFAULT_WORKSPACE, ...parsed });
   } catch {
     setWorkspaceSettings({ ...DEFAULT_WORKSPACE });
@@ -174,13 +196,19 @@ function createSettingsStore() {
   }
 
   function zoomIn() {
-    setZoomLevel(z => Math.min(z + 0.1, 2));
-    document.documentElement.style.setProperty("--app-zoom", zoomLevel().toString());
+    setZoomLevel((z) => Math.min(z + 0.1, 2));
+    document.documentElement.style.setProperty(
+      "--app-zoom",
+      zoomLevel().toString(),
+    );
   }
 
   function zoomOut() {
-    setZoomLevel(z => Math.max(z - 0.1, 0.5));
-    document.documentElement.style.setProperty("--app-zoom", zoomLevel().toString());
+    setZoomLevel((z) => Math.max(z - 0.1, 0.5));
+    document.documentElement.style.setProperty(
+      "--app-zoom",
+      zoomLevel().toString(),
+    );
   }
 
   function zoomReset() {

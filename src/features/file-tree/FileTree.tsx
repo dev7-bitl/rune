@@ -1,7 +1,13 @@
 import { Show, For, createSignal } from "solid-js";
 import type { FileEntry } from "../../types";
-import { FileTreeNode, InlineInput, type EditingItem, type EditingMode } from "./FileTreeNode";
-import { Folder, File, RefreshCw, Play, Terminal, Settings } from "lucide-solid";
+import {
+  FileTreeNode,
+  InlineInput,
+  type EditingItem,
+  type EditingMode,
+} from "./FileTreeNode";
+import { Folder, File, RefreshCw } from "lucide-solid";
+import { pluginRegistry } from "../../plugins/registry";
 
 interface FileTreeProps {
   tree: FileEntry[];
@@ -15,15 +21,17 @@ interface FileTreeProps {
   onContextMenu?: (entry: FileEntry, e: MouseEvent) => void;
   onEmptyContextMenu?: (e: MouseEvent) => void;
   editingItem?: EditingItem | null;
-  onSubmitEdit?: (parentPath: string, name: string, mode: EditingMode, originalName?: string) => void;
+  onSubmitEdit?: (
+    parentPath: string,
+    name: string,
+    mode: EditingMode,
+    originalName?: string,
+  ) => void;
   onCancelEdit?: () => void;
   onStartEdit?: (parentPath: string, mode: EditingMode) => void;
   activeFilePath?: string;
   selectedPaths?: Set<string>;
   onSelectPaths?: (paths: Set<string>) => void;
-  onRunScript?: () => void;
-  onOpenSettings?: () => void;
-  onToggleTerminal?: () => void;
 }
 
 export function FileTree(props: FileTreeProps) {
@@ -47,20 +55,26 @@ export function FileTree(props: FileTreeProps) {
 
   function handleKeyDown(e: KeyboardEvent) {
     if (props.editingItem) return; // Don't intercept if editing inline input
-    
+
     const visible = getVisibleEntries();
     if (visible.length === 0) return;
 
     let currentIndex = -1;
-    
+
     if (focusPath()) {
       currentIndex = visible.findIndex((v) => v.path === focusPath());
     }
-    
+
     // Fallbacks if no explicit focus path is set
-    if (currentIndex === -1 && props.selectedPaths && props.selectedPaths.size > 0) {
+    if (
+      currentIndex === -1 &&
+      props.selectedPaths &&
+      props.selectedPaths.size > 0
+    ) {
       const currentSelected = Array.from(props.selectedPaths);
-      currentIndex = visible.findIndex((v) => v.path === currentSelected[currentSelected.length - 1]);
+      currentIndex = visible.findIndex(
+        (v) => v.path === currentSelected[currentSelected.length - 1],
+      );
     }
     if (currentIndex === -1 && props.activeFilePath) {
       currentIndex = visible.findIndex((v) => v.path === props.activeFilePath);
@@ -68,7 +82,7 @@ export function FileTree(props: FileTreeProps) {
 
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      
+
       if (currentIndex === -1) {
         // Nothing selected, pick first item
         const first = visible[0];
@@ -78,10 +92,11 @@ export function FileTree(props: FileTreeProps) {
         return;
       }
 
-      const nextIndex = e.key === "ArrowDown" 
-        ? Math.min(currentIndex + 1, visible.length - 1)
-        : Math.max(currentIndex - 1, 0);
-        
+      const nextIndex =
+        e.key === "ArrowDown"
+          ? Math.min(currentIndex + 1, visible.length - 1)
+          : Math.max(currentIndex - 1, 0);
+
       const nextEntry = visible[nextIndex];
 
       if (e.shiftKey) {
@@ -90,7 +105,7 @@ export function FileTree(props: FileTreeProps) {
         const anchorIndex = visible.findIndex((v) => v.path === anchor);
         const start = Math.min(anchorIndex, nextIndex);
         const end = Math.max(anchorIndex, nextIndex);
-        
+
         const newSelection = new Set<string>();
         for (let i = start; i <= end; i++) {
           newSelection.add(visible[i].path);
@@ -109,7 +124,11 @@ export function FileTree(props: FileTreeProps) {
         const entry = visible[currentIndex];
         if (entry.isDirectory && !entry.isExpanded) {
           props.onToggleDir(entry.path);
-        } else if (entry.isDirectory && entry.isExpanded && currentIndex + 1 < visible.length) {
+        } else if (
+          entry.isDirectory &&
+          entry.isExpanded &&
+          currentIndex + 1 < visible.length
+        ) {
           // Move to first child
           const next = visible[currentIndex + 1];
           props.onSelectPaths?.(new Set([next.path]));
@@ -191,30 +210,30 @@ export function FileTree(props: FileTreeProps) {
             >
               <RefreshCw size={14} style={{ color: "var(--color-fg-muted)" }} />
             </button>
-            <button
-              class="hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent)] transition-colors p-1 rounded"
-              onClick={props.onRunScript}
-              title="Run Script (.rune/settings.json)"
-              style={{ background: "none", border: "none", cursor: "pointer" }}
-            >
-              <Play size={14} fill="currentColor" style={{ color: "var(--color-fg-muted)" }} />
-            </button>
-            <button
-              class="hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent)] transition-colors p-1 rounded"
-              onClick={props.onToggleTerminal}
-              title="Toggle Integrated Terminal"
-              style={{ background: "none", border: "none", cursor: "pointer" }}
-            >
-              <Terminal size={14} style={{ color: "var(--color-fg-muted)" }} />
-            </button>
-            <button
-              class="hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent)] transition-colors p-1 rounded"
-              onClick={props.onOpenSettings}
-              title="Open Rune Settings"
-              style={{ background: "none", border: "none", cursor: "pointer" }}
-            >
-              <Settings size={14} style={{ color: "var(--color-fg-muted)" }} />
-            </button>
+            <For each={pluginRegistry.getExplorerToolbarItems()}>
+              {(item) => (
+                <button
+                  class="hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-accent)] transition-colors p-1 rounded flex items-center justify-center"
+                  onClick={item.action}
+                  title={item.title}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span
+                    innerHTML={item.icon}
+                    class="flex items-center justify-center"
+                    style={{
+                      width: "14px",
+                      height: "14px",
+                      color: "var(--color-fg-muted)",
+                    }}
+                  />
+                </button>
+              )}
+            </For>
           </Show>
         </div>
       </div>
@@ -261,7 +280,10 @@ export function FileTree(props: FileTreeProps) {
             when={!props.loading}
             fallback={
               <div class="flex items-center justify-center h-8">
-                <span class="text-xs" style={{ color: "var(--color-fg-muted)" }}>
+                <span
+                  class="text-xs"
+                  style={{ color: "var(--color-fg-muted)" }}
+                >
                   Loading...
                 </span>
               </div>
@@ -273,12 +295,26 @@ export function FileTree(props: FileTreeProps) {
             >
               {props.rootPath?.split(/[\\/]/).pop()}
             </div>
-            <Show when={props.editingItem?.parentPath === props.rootPath && (props.editingItem.mode === "new-file" || props.editingItem.mode === "new-folder")}>
+            <Show
+              when={
+                props.editingItem?.parentPath === props.rootPath &&
+                (props.editingItem.mode === "new-file" ||
+                  props.editingItem.mode === "new-folder")
+              }
+            >
               <InlineInput
                 depth={0}
                 initialValue=""
-                icon={props.editingItem!.mode === "new-folder" ? "folder" : "file"}
-                onSubmit={(name) => props.onSubmitEdit?.(props.rootPath!, name, props.editingItem!.mode)}
+                icon={
+                  props.editingItem!.mode === "new-folder" ? "folder" : "file"
+                }
+                onSubmit={(name) =>
+                  props.onSubmitEdit?.(
+                    props.rootPath!,
+                    name,
+                    props.editingItem!.mode,
+                  )
+                }
                 onCancel={() => props.onCancelEdit?.()}
               />
             </Show>

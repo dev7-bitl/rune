@@ -1,7 +1,9 @@
-import { Show } from "solid-js";
+import { Show, For } from "solid-js";
 import { WindowControls } from "./WindowControls";
 import { MenuBar } from "./MenuBar";
 import type { MenuDefinition } from "../../types";
+import { pluginRegistry } from "../../plugins/registry";
+import { IndexerProgress } from "./IndexerProgress";
 
 interface TitlebarProps {
   menus?: MenuDefinition[];
@@ -29,6 +31,28 @@ export function Titlebar(props: TitlebarProps) {
         style={{ color: "var(--color-fg-muted)" }}
       >
         {props.title ?? "Rune Editor"}
+      </div>
+
+      <div
+        class="flex items-center h-full no-drag"
+        style={{ "-webkit-app-region": "no-drag" }}
+      >
+        <IndexerProgress />
+        <For each={pluginRegistry.getTitlebarItems()}>
+          {(item) => (
+            <button
+              class="h-full px-2 hover:bg-[var(--color-bg-secondary)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors flex items-center justify-center"
+              onClick={item.action}
+              title={item.title}
+            >
+              <span
+                innerHTML={item.icon}
+                class="flex items-center justify-center"
+                style={{ width: "14px", height: "14px" }}
+              />
+            </button>
+          )}
+        </For>
       </div>
 
       <WindowControls />

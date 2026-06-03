@@ -5,10 +5,7 @@ interface PdfViewerProps {
 
 export function PdfViewer(props: PdfViewerProps) {
   return (
-    <div
-      class="w-full h-full"
-      style={{ background: "var(--color-bg)" }}
-    >
+    <div class="w-full h-full" style={{ background: "var(--color-bg)" }}>
       <embed
         src={props.dataUrl}
         type="application/pdf"

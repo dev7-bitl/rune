@@ -6,7 +6,9 @@ let untitledCount = 0;
 
 const [tabs, setTabs] = createSignal<Tab[]>([]);
 const [activeTabId, setActiveTabId] = createSignal<string | null>(null);
-const [rightActiveTabId, setRightActiveTabId] = createSignal<string | null>(null);
+const [rightActiveTabId, setRightActiveTabId] = createSignal<string | null>(
+  null,
+);
 const [focusedPane, setFocusedPane] = createSignal<PaneSide>("left");
 
 const TAB_STORAGE_PREFIX = "rune-tabs-";
@@ -32,7 +34,9 @@ function saveTabsToStorage(rootPath: string | null) {
   localStorage.setItem(TAB_STORAGE_PREFIX + rootPath, JSON.stringify(data));
 }
 
-function loadTabsFromStorage(rootPath: string): (Tab & { pane: PaneSide })[] | null {
+function loadTabsFromStorage(
+  rootPath: string,
+): (Tab & { pane: PaneSide })[] | null {
   const raw = localStorage.getItem(TAB_STORAGE_PREFIX + rootPath);
   if (!raw) return null;
   try {
@@ -71,7 +75,14 @@ function openTab(
   dataUrl?: string,
   pane: PaneSide = "left",
 ): string {
-  console.log("openTab called for:", filePath, "fileName:", fileName, "fileType:", fileType);
+  console.log(
+    "openTab called for:",
+    filePath,
+    "fileName:",
+    fileName,
+    "fileType:",
+    fileType,
+  );
   const existing = tabs().find((t) => t.filePath === filePath);
   if (existing) {
     if (existing.pane === "left") setActiveTabId(existing.id);
@@ -126,13 +137,17 @@ function closeTab(tabId: string): { paneCleared?: PaneSide } {
   const currentTabs = tabs();
   setTabs((prev) => prev.filter((t) => t.id !== tabId));
 
-  const paneRemaining = currentTabs.filter((t) => t.id !== tabId && t.pane === tab.pane);
+  const paneRemaining = currentTabs.filter(
+    (t) => t.id !== tabId && t.pane === tab.pane,
+  );
   let paneCleared: PaneSide | undefined;
   if (paneRemaining.length === 0) paneCleared = tab.pane;
 
   if (tab.pane === "left" && activeTabId() === tabId) {
     if (paneRemaining.length > 0) {
-      const paneLocalIndex = currentTabs.filter((t) => t.pane === "left").findIndex((t) => t.id === tabId);
+      const paneLocalIndex = currentTabs
+        .filter((t) => t.pane === "left")
+        .findIndex((t) => t.id === tabId);
       const newIndex = Math.min(paneLocalIndex, paneRemaining.length - 1);
       setActiveTabId(paneRemaining[newIndex].id);
     } else {
@@ -140,7 +155,9 @@ function closeTab(tabId: string): { paneCleared?: PaneSide } {
     }
   } else if (tab.pane === "right" && rightActiveTabId() === tabId) {
     if (paneRemaining.length > 0) {
-      const paneLocalIndex = currentTabs.filter((t) => t.pane === "right").findIndex((t) => t.id === tabId);
+      const paneLocalIndex = currentTabs
+        .filter((t) => t.pane === "right")
+        .findIndex((t) => t.id === tabId);
       const newIndex = Math.min(paneLocalIndex, paneRemaining.length - 1);
       setRightActiveTabId(paneRemaining[newIndex].id);
     } else {
@@ -156,16 +173,26 @@ function updateTabContent(tabId: string, content: string) {
   setTabs((prev) =>
     prev.map((t) => {
       if (t.id !== tabId) return t;
-      return { ...t, content: normalized, isDirty: normalized !== t.savedContent };
-    })
+      return {
+        ...t,
+        content: normalized,
+        isDirty: normalized !== t.savedContent,
+      };
+    }),
   );
 }
 
 function markTabClean(tabId: string) {
   setTabs((prev) =>
     prev.map((t) =>
-      t.id === tabId ? { ...t, isDirty: false, savedContent: t.content.replace(/\r\n/g, "\n") } : t
-    )
+      t.id === tabId
+        ? {
+            ...t,
+            isDirty: false,
+            savedContent: t.content.replace(/\r\n/g, "\n"),
+          }
+        : t,
+    ),
   );
 }
 
@@ -200,9 +227,15 @@ function updateTabAfterSave(tabId: string, filePath: string, fileName: string) {
   setTabs((prev) =>
     prev.map((t) =>
       t.id === tabId
-        ? { ...t, filePath, fileName, savedContent: t.content.replace(/\r\n/g, "\n"), isDirty: false }
-        : t
-    )
+        ? {
+            ...t,
+            filePath,
+            fileName,
+            savedContent: t.content.replace(/\r\n/g, "\n"),
+            isDirty: false,
+          }
+        : t,
+    ),
   );
 }
 
@@ -212,21 +245,21 @@ function moveTabToPane(tabId: string, targetPane: PaneSide) {
 
   // Remove from old pane, add to new pane
   setTabs((prev) =>
-    prev.map((t) => (t.id === tabId ? { ...t, pane: targetPane } : t))
+    prev.map((t) => (t.id === tabId ? { ...t, pane: targetPane } : t)),
   );
 
   if (targetPane === "left") {
     setActiveTabId(tabId);
     setFocusedPane("left");
     if (rightActiveTabId() === tabId) {
-      const rightTabs = tabs().filter(t => t.pane === "right");
+      const rightTabs = tabs().filter((t) => t.pane === "right");
       setRightActiveTabId(rightTabs[rightTabs.length - 1]?.id ?? null);
     }
   } else {
     setRightActiveTabId(tabId);
     setFocusedPane("right");
     if (activeTabId() === tabId) {
-      const leftTabs = tabs().filter(t => t.pane === "left");
+      const leftTabs = tabs().filter((t) => t.pane === "left");
       setActiveTabId(leftTabs[leftTabs.length - 1]?.id ?? null);
     }
   }
@@ -253,7 +286,10 @@ function closeTabsToRight(tabId: string) {
   setTabs(kept);
   if (tab.pane === "left" && !kept.find((t) => t.id === activeTabId())) {
     setActiveTabId(keptPaneTabs[keptPaneTabs.length - 1]?.id ?? null);
-  } else if (tab.pane === "right" && !kept.find((t) => t.id === rightActiveTabId())) {
+  } else if (
+    tab.pane === "right" &&
+    !kept.find((t) => t.id === rightActiveTabId())
+  ) {
     setRightActiveTabId(keptPaneTabs[keptPaneTabs.length - 1]?.id ?? null);
   }
 }
@@ -269,7 +305,9 @@ function closeTabsForPath(deletedPath: string) {
   const tabsToClose = tabs().filter((t) => {
     if (!t.filePath) return false;
     const normTabPath = t.filePath.replace(/\\/g, "/");
-    return normTabPath === normDeleted || normTabPath.startsWith(normDeleted + "/");
+    return (
+      normTabPath === normDeleted || normTabPath.startsWith(normDeleted + "/")
+    );
   });
 
   for (const t of tabsToClose) {

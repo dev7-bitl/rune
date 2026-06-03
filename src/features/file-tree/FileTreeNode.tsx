@@ -21,7 +21,12 @@ interface FileTreeNodeProps {
   selectedPaths?: Set<string>;
   onSelectPaths?: (paths: Set<string>) => void;
   editingItem?: EditingItem | null;
-  onSubmitEdit?: (parentPath: string, name: string, mode: EditingMode, originalName?: string) => void;
+  onSubmitEdit?: (
+    parentPath: string,
+    name: string,
+    mode: EditingMode,
+    originalName?: string,
+  ) => void;
   onCancelEdit?: () => void;
 }
 
@@ -144,7 +149,14 @@ export function FileTreeNode(props: FileTreeNodeProps) {
             depth={props.depth}
             initialValue={props.entry.name}
             icon={props.entry.isDirectory ? "folder" : "file"}
-            onSubmit={(name) => props.onSubmitEdit?.(props.entry.path, name, "rename", props.entry.name)}
+            onSubmit={(name) =>
+              props.onSubmitEdit?.(
+                props.entry.path,
+                name,
+                "rename",
+                props.entry.name,
+              )
+            }
             onCancel={() => props.onCancelEdit?.()}
           />
         }
@@ -188,12 +200,24 @@ export function FileTreeNode(props: FileTreeNodeProps) {
       </Show>
 
       <Show when={props.entry.isDirectory && props.entry.isExpanded}>
-        <Show when={props.editingItem?.parentPath === props.entry.path && (props.editingItem.mode === "new-file" || props.editingItem.mode === "new-folder")}>
+        <Show
+          when={
+            props.editingItem?.parentPath === props.entry.path &&
+            (props.editingItem.mode === "new-file" ||
+              props.editingItem.mode === "new-folder")
+          }
+        >
           <InlineInput
             depth={props.depth + 1}
             initialValue=""
             icon={props.editingItem!.mode === "new-folder" ? "folder" : "file"}
-            onSubmit={(name) => props.onSubmitEdit?.(props.editingItem!.parentPath, name, props.editingItem!.mode)}
+            onSubmit={(name) =>
+              props.onSubmitEdit?.(
+                props.editingItem!.parentPath,
+                name,
+                props.editingItem!.mode,
+              )
+            }
             onCancel={() => props.onCancelEdit?.()}
           />
         </Show>
@@ -204,7 +228,10 @@ export function FileTreeNode(props: FileTreeNodeProps) {
               <FileTreeNode
                 entry={child}
                 depth={props.depth + 1}
-                parentExpanded={[...props.parentExpanded, props.entry.isExpanded ?? false]}
+                parentExpanded={[
+                  ...props.parentExpanded,
+                  props.entry.isExpanded ?? false,
+                ]}
                 onFileClick={props.onFileClick}
                 onToggleDir={props.onToggleDir}
                 onContextMenu={props.onContextMenu}

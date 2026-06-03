@@ -34,7 +34,14 @@ export function WindowControls() {
         onClick={handleMaximize}
         class="w-[46px] h-full flex items-center justify-center hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-fg)] transition-colors"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+        >
           <rect x="0.5" y="0.5" width="9" height="9" />
         </svg>
       </button>
@@ -42,7 +49,14 @@ export function WindowControls() {
         onClick={handleClose}
         class="w-[46px] h-full flex items-center justify-center hover:bg-[var(--color-error)] hover:text-white transition-colors"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2">
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+        >
           <line x1="0" y1="0" x2="10" y2="10" />
           <line x1="10" y1="0" x2="0" y2="10" />
         </svg>

@@ -58,6 +58,10 @@
     },
     "fs:allow-unwatch",
     {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "**" }]
+    },
+    {
       "identifier": "dialog:allow-open",
       "allow": [{ "path": "**" }]
     },

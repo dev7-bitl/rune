@@ -1,3 +1,5 @@
+import type { RunePlugin, RuneAPI } from "../types";
+
 let extMap: Record<string, string> = {};
 let fileNameMap: Record<string, string> = {};
 let folderMap: Record<string, string> = {};
@@ -14,8 +16,8 @@ async function fetchSvg(iconName: string): Promise<string> {
   if (pendingFetches.has(iconName)) return pendingFetches.get(iconName)!;
 
   const promise = fetch(`/icons/${iconName}.svg`)
-    .then(r => r.ok ? r.text() : "")
-    .then(svg => {
+    .then((r) => (r.ok ? r.text() : ""))
+    .then((svg) => {
       svgCache.set(iconName, svg);
       pendingFetches.delete(iconName);
       return svg;
@@ -29,7 +31,7 @@ async function fetchSvg(iconName: string): Promise<string> {
   return promise;
 }
 
-export async function loadIconMap(): Promise<void> {
+async function loadIconMap(): Promise<void> {
   if (loaded) return;
   try {
     const res = await fetch("/icons/icon-map.json");
@@ -41,7 +43,19 @@ export async function loadIconMap(): Promise<void> {
     loaded = true;
 
     // Preload common icons in background
-    const commonIcons = ["file", "folder", "folder-open", "typescript", "javascript", "json", "html", "css", "markdown", "python", "rust"];
+    const commonIcons = [
+      "file",
+      "folder",
+      "folder-open",
+      "typescript",
+      "javascript",
+      "json",
+      "html",
+      "css",
+      "markdown",
+      "python",
+      "rust",
+    ];
     for (const name of commonIcons) {
       fetchSvg(name);
     }
@@ -50,7 +64,7 @@ export async function loadIconMap(): Promise<void> {
   }
 }
 
-export function getFileIconName(fileName: string): string {
+function getFileIconName(fileName: string): string {
   const lower = fileName.toLowerCase();
   if (fileNameMap[lower]) return fileNameMap[lower];
   const dotIndex = fileName.lastIndexOf(".");
@@ -61,15 +75,37 @@ export function getFileIconName(fileName: string): string {
   return "file";
 }
 
-export function getFolderIconName(folderName: string, expanded: boolean): string {
+function getFolderIconName(folderName: string, expanded: boolean): string {
   const lower = folderName.toLowerCase();
   if (expanded && folderExpandedMap[lower]) return folderExpandedMap[lower];
   if (folderMap[lower]) return folderMap[lower];
   return expanded ? "folder-open" : "folder";
 }
 
-export function getSvg(iconName: string): string | undefined {
-  return svgCache.get(iconName);
-}
+const fileIconsPlugin: RunePlugin = {
+  id: "core.file-icons",
+  name: "File Icons",
+  version: "1.0.0",
+  type: "builtin",
+  permissions: [],
+  activate(api: RuneAPI) {
+    // Start loading the icon map in the background
+    loadIconMap();
 
-export { fetchSvg };
+    api.ui.registerIconProvider({
+      id: "core.file-icons",
+      getFileIcon: async (fileName: string) => {
+        await loadIconMap();
+        const iconName = getFileIconName(fileName);
+        return fetchSvg(iconName);
+      },
+      getFolderIcon: async (folderName: string, expanded: boolean) => {
+        await loadIconMap();
+        const iconName = getFolderIconName(folderName, expanded);
+        return fetchSvg(iconName);
+      },
+    });
+  },
+};
+
+export default fileIconsPlugin;

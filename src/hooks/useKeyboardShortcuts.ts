@@ -12,13 +12,16 @@ export function useKeyboardShortcuts(
   shortcuts: () => Record<string, ShortcutHandler>,
   chords?: () => ChordShortcut[],
 ) {
-  let waitingForChord: { action: ShortcutHandler; timeout: ReturnType<typeof setTimeout> } | null = null;
+  let waitingForChord: {
+    action: ShortcutHandler;
+    timeout: ReturnType<typeof setTimeout>;
+  } | null = null;
 
   function buildCombo(e: KeyboardEvent): string {
     const parts: string[] = [];
     if (e.ctrlKey || e.metaKey) parts.push("ctrl");
-    if (e.shiftKey) parts.push("shift");
     if (e.altKey) parts.push("alt");
+    if (e.shiftKey) parts.push("shift");
     parts.push(e.code);
     return parts.join("+");
   }
@@ -37,11 +40,15 @@ export function useKeyboardShortcuts(
   function handleKeyDown(e: KeyboardEvent) {
     const target = e.target as HTMLElement;
     const tag = target?.tagName;
-    const isEditable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || 
-                       target?.isContentEditable || target?.closest(".cm-editor") !== null;
+    const isEditable =
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT" ||
+      target?.isContentEditable ||
+      target?.closest(".cm-editor") !== null;
 
     const combo = buildCombo(e);
-    if (isEditable && !combo.includes("ctrl")) {
+    if (isEditable && !combo.includes("ctrl") && !combo.includes("alt")) {
       return;
     }
 
@@ -82,7 +89,9 @@ export function useKeyboardShortcuts(
         e.preventDefault();
         e.stopPropagation();
         const action = chord.action;
-        const timeout = setTimeout(() => { waitingForChord = null; }, 2000);
+        const timeout = setTimeout(() => {
+          waitingForChord = null;
+        }, 2000);
         waitingForChord = { action, timeout };
         return;
       }
@@ -106,4 +115,61 @@ export function useKeyboardShortcuts(
     document.removeEventListener("keydown", handleKeyDown, true);
     if (waitingForChord) clearTimeout(waitingForChord.timeout);
   });
+}
+
+export function normalizeShortcut(shortcut: string): string | null {
+  if (!shortcut) return null;
+  const parts = shortcut.toLowerCase().split("+");
+  const modifiers: string[] = [];
+  let key = "";
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (
+      trimmed === "ctrl" ||
+      trimmed === "control" ||
+      trimmed === "meta" ||
+      trimmed === "cmd" ||
+      trimmed === "command"
+    ) {
+      if (!modifiers.includes("ctrl")) modifiers.push("ctrl");
+    } else if (trimmed === "alt" || trimmed === "option") {
+      if (!modifiers.includes("alt")) modifiers.push("alt");
+    } else if (trimmed === "shift") {
+      if (!modifiers.includes("shift")) modifiers.push("shift");
+    } else {
+      key = trimmed;
+    }
+  }
+
+  if (!key) return null;
+
+  let codeKey = key;
+  if (/^[a-z]$/.test(key)) {
+    codeKey = "Key" + key.toUpperCase();
+  } else if (/^[0-9]$/.test(key)) {
+    codeKey = "Digit" + key;
+  } else if (key === "`" || key === "backquote") {
+    codeKey = "Backquote";
+  } else if (key === "=" || key === "equal") {
+    codeKey = "Equal";
+  } else if (key === "-" || key === "minus") {
+    codeKey = "Minus";
+  } else {
+    if (key === "enter") codeKey = "Enter";
+    else if (key === "escape" || key === "esc") codeKey = "Escape";
+    else if (key === "delete" || key === "del") codeKey = "Delete";
+    else if (key === "tab") codeKey = "Tab";
+    else if (key === "space") codeKey = "Space";
+    else {
+      codeKey = key.charAt(0).toUpperCase() + key.slice(1);
+    }
+  }
+
+  const orderedMods: string[] = [];
+  if (modifiers.includes("ctrl")) orderedMods.push("ctrl");
+  if (modifiers.includes("alt")) orderedMods.push("alt");
+  if (modifiers.includes("shift")) orderedMods.push("shift");
+
+  return [...orderedMods, codeKey].join("+");
 }

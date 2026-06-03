@@ -1,12 +1,50 @@
-import { onMount, onCleanup, createEffect, createSignal } from "solid-js";
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, drawSelection, rectangularSelection, highlightSpecialChars, crosshairCursor } from "@codemirror/view";
+import { onMount, onCleanup, createEffect, createSignal, Show } from "solid-js";
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightActiveLine,
+  drawSelection,
+  rectangularSelection,
+  highlightSpecialChars,
+  crosshairCursor,
+} from "@codemirror/view";
 import { globalSettings } from "../../stores/settings";
 import { EditorState, Compartment, Transaction } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo, selectAll } from "@codemirror/commands";
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
-import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
-import { foldGutter, indentOnInput, bracketMatching, foldKeymap, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
-import { ContextMenu, type ContextMenuItem } from "../../components/ContextMenu";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+  undo,
+  redo,
+  selectAll,
+} from "@codemirror/commands";
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
+import { invoke } from "@tauri-apps/api/core";
+import { searchKeymap, highlightSelectionMatches, openSearchPanel } from "@codemirror/search";
+import {
+  foldGutter,
+  indentOnInput,
+  bracketMatching,
+  foldKeymap,
+  syntaxHighlighting,
+  defaultHighlightStyle,
+} from "@codemirror/language";
+import {
+  ContextMenu,
+  type ContextMenuItem,
+} from "../../components/ContextMenu";
+import { pluginRegistry } from "../../plugins";
+import { tabStore } from "../../stores/tabs";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -34,24 +72,42 @@ function getLanguageExtension(lang: string): Extension {
       return javascript({ jsx: true });
     case "typescript":
       return javascript({ typescript: true, jsx: true });
-    case "html": return html();
-    case "css": return css();
-    case "json": return json();
-    case "rust": return rust();
-    case "python": return python();
-    case "markdown": return markdown();
-    case "cpp": return cpp();
-    case "java": return java();
-    case "sql": return sql();
-    case "php": return php();
-    case "xml": return xml();
-    case "vue": return vue();
-    case "toml": return StreamLanguage.define(toml);
-    case "yaml": return StreamLanguage.define(yaml);
-    case "shell": return StreamLanguage.define(shell);
-    case "go": return StreamLanguage.define(go);
-    case "blade": return html(); // Blade = HTML + @directives + {{ }}
-    default: return [];
+    case "html":
+      return html();
+    case "css":
+      return css();
+    case "json":
+      return json();
+    case "rust":
+      return rust();
+    case "python":
+      return python();
+    case "markdown":
+      return markdown();
+    case "cpp":
+      return cpp();
+    case "java":
+      return java();
+    case "sql":
+      return sql();
+    case "php":
+      return php();
+    case "xml":
+      return xml();
+    case "vue":
+      return vue();
+    case "toml":
+      return StreamLanguage.define(toml);
+    case "yaml":
+      return StreamLanguage.define(yaml);
+    case "shell":
+      return StreamLanguage.define(shell);
+    case "go":
+      return StreamLanguage.define(go);
+    case "blade":
+      return html(); // Blade = HTML + @directives + {{ }}
+    default:
+      return [];
   }
 }
 
@@ -63,6 +119,31 @@ interface CodeMirrorViewProps {
   tabId?: string | null;
 }
 
+async function globalWordCompletion(
+  context: CompletionContext,
+): Promise<CompletionResult | null> {
+  const word = context.matchBefore(/[\w_]+/);
+  if (!word || (word.from === word.to && !context.explicit)) return null;
+
+  try {
+    const completions: string[] = await invoke("get_completions", {
+      query: word.text,
+    });
+    if (completions.length === 0) return null;
+
+    return {
+      from: word.from,
+      options: completions.map((c) => ({
+        label: c,
+        type: "text",
+        boost: -1,
+      })),
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 export function CodeMirrorView(props: CodeMirrorViewProps) {
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
@@ -71,50 +152,111 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
   let currentContent = props.content;
   let settingContent = false;
   let lastTabId = props.tabId;
-  const [ctxMenu, setCtxMenu] = createSignal<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [ctxMenu, setCtxMenu] = createSignal<{
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+  } | null>(null);
+
+  let gotoLineHandler: ((e: Event) => void) | undefined;
+  let findHandler: ((e: Event) => void) | undefined;
+
+  let updateIndexTimeout: number | undefined;
+  onCleanup(() => {
+    if (updateIndexTimeout) clearTimeout(updateIndexTimeout);
+  });
+
+  function scheduleIndexUpdate(content: string) {
+    if (!props.tabId) return;
+    const tab = tabStore.tabs().find((t) => t.id === props.tabId);
+    if (!tab?.filePath) return;
+
+    if (updateIndexTimeout) clearTimeout(updateIndexTimeout);
+    updateIndexTimeout = window.setTimeout(() => {
+      invoke("update_file_index", { filePath: tab.filePath, content }).catch(
+        console.error,
+      );
+    }, 1000);
+  }
 
   function buildExtensions(): Extension[] {
     return [
-        EditorState.allowMultipleSelections.of(true),
-        lineNumbers(),
-        highlightActiveLineGutter(),
-        highlightSpecialChars(),
-        history(),
-        foldGutter(),
-        drawSelection(),
-        indentOnInput(),
-        bracketMatching(),
-        closeBrackets(),
-        autocompletion(),
-        rectangularSelection(),
-        crosshairCursor(),
-        highlightActiveLine(),
-        highlightSelectionMatches({ minSelectionLength: 1 }),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        keymap.of([
-          { key: "Mod-Shift-z", run: redo, preventDefault: true },
-          ...closeBracketsKeymap,
-          ...defaultKeymap,
-          ...searchKeymap,
-          ...historyKeymap,
-          ...foldKeymap,
-          ...completionKeymap,
-          indentWithTab,
-        ]),
-        languageCompartment.of(getLanguageExtension(props.language)),
-        wordWrapCompartment.of(globalSettings.wordWrap ? EditorView.lineWrapping : []),
-        createRuneTheme(),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged && !settingContent) {
-            const isUserEdit = update.transactions.some((t) =>
-              t.annotation(Transaction.userEvent) !== undefined
-            );
-            if (isUserEdit) {
-              currentContent = update.state.doc.toString();
-              props.onChange?.(currentContent);
-            }
+      EditorState.allowMultipleSelections.of(true),
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightSpecialChars(),
+      history(),
+      foldGutter(),
+      drawSelection(),
+      indentOnInput(),
+      bracketMatching(),
+      closeBrackets(),
+      autocompletion(),
+      EditorState.languageData.of(() => [
+        { autocomplete: globalWordCompletion },
+      ]),
+      rectangularSelection(),
+      crosshairCursor(),
+      highlightActiveLine(),
+      highlightSelectionMatches({ minSelectionLength: 1 }),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      keymap.of([
+        { key: "Mod-Shift-z", run: redo, preventDefault: true },
+        {
+          key: "F12",
+          run: (targetView) => {
+            const state = targetView.state;
+            const pos = state.selection.main.head;
+            const word = state.wordAt(pos);
+            if (!word) return false;
+
+            const wordStr = state.sliceDoc(word.from, word.to);
+            invoke<{ path: string; line: number } | null>("get_definition", {
+              symbol: wordStr,
+            }).then((sym) => {
+              if (sym) {
+                window.dispatchEvent(
+                  new CustomEvent("rune-open-file", {
+                    detail: { path: sym.path },
+                  }),
+                );
+                setTimeout(() => {
+                  window.dispatchEvent(
+                    new CustomEvent("rune-goto-line-path", {
+                      detail: { path: sym.path, line: sym.line },
+                    }),
+                  );
+                }, 150);
+              }
+            });
+            return true;
+          },
+        },
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...completionKeymap,
+        indentWithTab,
+      ]),
+      languageCompartment.of(getLanguageExtension(props.language)),
+      wordWrapCompartment.of(
+        globalSettings.wordWrap ? EditorView.lineWrapping : [],
+      ),
+      createRuneTheme(),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged && !settingContent) {
+          const isUserEdit = update.transactions.some(
+            (t) => t.annotation(Transaction.userEvent) !== undefined,
+          );
+          if (isUserEdit) {
+            currentContent = update.state.doc.toString();
+            props.onChange?.(currentContent);
+            scheduleIndexUpdate(currentContent);
           }
-        }),
+        }
+      }),
     ];
   }
 
@@ -127,9 +269,43 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
     view = new EditorView({ state, parent: containerRef });
     view.focus();
     props.onScrollerRef?.(view.scrollDOM);
+
+    gotoLineHandler = (e: Event) => {
+      const { path, line } = (e as CustomEvent).detail;
+      const tab = tabStore.tabs().find((t) => t.id === props.tabId);
+      if (tab?.filePath === path && view) {
+        const doc = view.state.doc;
+        if (line >= 1 && line <= doc.lines) {
+          const lineInfo = doc.line(line);
+          view.dispatch({
+            selection: { anchor: lineInfo.from },
+            effects: EditorView.scrollIntoView(lineInfo.from, { y: "center" }),
+          });
+          view.focus();
+        }
+      }
+    };
+    window.addEventListener("rune-goto-line-path", gotoLineHandler);
+
+    findHandler = () => {
+      // Only respond if this editor's tab is currently focused
+      if (tabStore.activeTabId() === props.tabId || tabStore.rightActiveTabId() === props.tabId) {
+        if (view) {
+          openSearchPanel(view);
+          view.focus();
+        }
+      }
+    };
+    window.addEventListener("rune-editor-find", findHandler);
   });
 
   onCleanup(() => {
+    if (gotoLineHandler) {
+      window.removeEventListener("rune-goto-line-path", gotoLineHandler);
+    }
+    if (findHandler) {
+      window.removeEventListener("rune-editor-find", findHandler);
+    }
     view?.destroy();
     view = undefined;
   });
@@ -146,7 +322,9 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
   createEffect(() => {
     if (view) {
       view.dispatch({
-        effects: wordWrapCompartment.reconfigure(globalSettings.wordWrap ? EditorView.lineWrapping : []),
+        effects: wordWrapCompartment.reconfigure(
+          globalSettings.wordWrap ? EditorView.lineWrapping : [],
+        ),
       });
     }
   });
@@ -184,37 +362,108 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
     if (!view) return;
 
     const items: ContextMenuItem[] = [
-      { label: "Cut", action: () => { view?.focus(); document.execCommand("cut"); } },
-      { label: "Copy", action: () => { view?.focus(); document.execCommand("copy"); } },
-      { label: "Paste", action: () => {
-        view?.focus();
-        if (!view) return;
-        navigator.clipboard.readText().then(text => {
+      {
+        label: "Cut",
+        action: () => {
+          view?.focus();
+          document.execCommand("cut");
+        },
+      },
+      {
+        label: "Copy",
+        action: () => {
+          view?.focus();
+          document.execCommand("copy");
+        },
+      },
+      {
+        label: "Paste",
+        action: () => {
+          view?.focus();
           if (!view) return;
-          view.dispatch(view.state.replaceSelection(text));
-        }).catch(() => { document.execCommand("paste"); });
-      } },
+          navigator.clipboard
+            .readText()
+            .then((text) => {
+              if (!view) return;
+              view.dispatch(view.state.replaceSelection(text));
+            })
+            .catch(() => {
+              document.execCommand("paste");
+            });
+        },
+      },
       { separator: true, label: "" },
-      { label: "Select All", action: () => { view?.focus(); if (view) selectAll(view); } },
+      {
+        label: "Select All",
+        action: () => {
+          view?.focus();
+          if (view) selectAll(view);
+        },
+      },
       { separator: true, label: "" },
-      { label: "Undo", action: () => { view?.focus(); undo(view!); } },
-      { label: "Redo", action: () => { view?.focus(); redo(view!); } },
+      {
+        label: "Undo",
+        action: () => {
+          view?.focus();
+          undo(view!);
+        },
+      },
+      {
+        label: "Redo",
+        action: () => {
+          view?.focus();
+          redo(view!);
+        },
+      },
     ];
+
+    // Plugin context menu items
+    const activeTab = tabStore.getFocusedTab();
+    const pluginItems = pluginRegistry.getContextMenuItems("editor", {
+      language: activeTab?.language,
+      filePath: activeTab?.filePath,
+    });
+    if (pluginItems.length > 0) {
+      items.push({ separator: true, label: "" });
+      for (const p of pluginItems) {
+        if ("separator" in p && p.separator) {
+          items.push({ separator: true, label: "" });
+        } else {
+          const reg = p as any;
+          items.push({
+            label: reg.label,
+            icon: reg.icon,
+            hint: reg.hint,
+            action: () =>
+              reg.action({
+                language: activeTab?.language,
+                filePath: activeTab?.filePath,
+              }),
+          });
+        }
+      }
+    }
 
     setCtxMenu({ x: e.clientX, y: e.clientY, items });
   }
 
   return (
     <>
-      <div ref={containerRef} class="h-full w-full overflow-hidden" onContextMenu={handleContextMenu} />
-      {ctxMenu() && (
-        <ContextMenu
-          x={ctxMenu()!.x}
-          y={ctxMenu()!.y}
-          items={ctxMenu()!.items}
-          onClose={() => setCtxMenu(null)}
-        />
-      )}
+      <div
+        ref={containerRef}
+        class="h-full w-full overflow-hidden"
+        onContextMenu={handleContextMenu}
+      />
+      <Show when={ctxMenu()}>
+        {(cm) => (
+          <ContextMenu
+            x={cm().x}
+            y={cm().y}
+            items={cm().items}
+            onClose={() => setCtxMenu(null)}
+          />
+        )}
+      </Show>
     </>
   );
 }

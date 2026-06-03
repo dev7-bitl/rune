@@ -3,6 +3,10 @@ import { Show, onMount } from "solid-js";
 interface ConfirmDialogProps {
   message: string;
   detail?: string;
+  okLabel?: string;
+  cancelLabel?: string;
+  variant?: "primary" | "danger";
+  hideCancel?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,6 +24,10 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       props.onCancel();
     }
   }
+
+  const okText = () => props.okLabel || "OK";
+  const cancelText = () => props.cancelLabel || "Cancel";
+  const variant = () => props.variant || "primary";
 
   return (
     <div
@@ -48,46 +56,69 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           </Show>
         </div>
         <div class="flex justify-end gap-2.5 pt-1">
+          <Show when={!props.hideCancel}>
+            <button
+              ref={cancelButtonRef}
+              class="px-3 py-1.5 text-xs rounded transition-colors"
+              style={{
+                background: "var(--color-bg-tertiary)",
+                color: "var(--color-fg-muted)",
+                border: "1px solid var(--color-border)",
+                cursor: "pointer",
+              }}
+              onClick={props.onCancel}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--color-fg)";
+                e.currentTarget.style.borderColor = "var(--color-fg-muted)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--color-fg-muted)";
+                e.currentTarget.style.borderColor = "var(--color-border)";
+              }}
+            >
+              {cancelText()}
+            </button>
+          </Show>
           <button
-            ref={cancelButtonRef}
-            class="px-3 py-1.5 text-xs rounded transition-colors"
+            class="px-3 py-1.5 text-xs rounded transition-colors font-semibold"
             style={{
-              background: "var(--color-bg-tertiary)",
-              color: "var(--color-fg-muted)",
-              border: "1px solid var(--color-border)",
-              cursor: "pointer",
-            }}
-            onClick={props.onCancel}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--color-fg)";
-              e.currentTarget.style.borderColor = "var(--color-fg-muted)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--color-fg-muted)";
-              e.currentTarget.style.borderColor = "var(--color-border)";
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            class="px-3 py-1.5 text-xs rounded transition-colors"
-            style={{
-              background: "rgba(255, 68, 68, 0.15)",
-              color: "var(--color-error)",
-              border: "1px solid var(--color-error)",
+              background:
+                variant() === "danger"
+                  ? "rgba(255, 68, 68, 0.15)"
+                  : "var(--color-accent-dim, rgba(205, 255, 7, 0.15))",
+              color:
+                variant() === "danger"
+                  ? "var(--color-error)"
+                  : "var(--color-accent, #CDFF07)",
+              border:
+                variant() === "danger"
+                  ? "1px solid var(--color-error)"
+                  : "1px solid var(--color-accent, #CDFF07)",
               cursor: "pointer",
             }}
             onClick={props.onConfirm}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--color-error)";
-              e.currentTarget.style.color = "#ffffff";
+              if (variant() === "danger") {
+                e.currentTarget.style.background = "var(--color-error)";
+                e.currentTarget.style.color = "#ffffff";
+              } else {
+                e.currentTarget.style.background =
+                  "var(--color-accent, #CDFF07)";
+                e.currentTarget.style.color = "var(--color-bg, #000000)";
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(255, 68, 68, 0.15)";
-              e.currentTarget.style.color = "var(--color-error)";
+              if (variant() === "danger") {
+                e.currentTarget.style.background = "rgba(255, 68, 68, 0.15)";
+                e.currentTarget.style.color = "var(--color-error)";
+              } else {
+                e.currentTarget.style.background =
+                  "var(--color-accent-dim, rgba(205, 255, 7, 0.15))";
+                e.currentTarget.style.color = "var(--color-accent, #CDFF07)";
+              }
             }}
           >
-            Delete
+            {okText()}
           </button>
         </div>
       </div>

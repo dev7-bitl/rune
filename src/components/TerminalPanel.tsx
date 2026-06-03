@@ -1,4 +1,12 @@
-import { createSignal, createUniqueId, For, Show, onMount, onCleanup, createEffect } from "solid-js";
+import {
+  createSignal,
+  createUniqueId,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+  createEffect,
+} from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
@@ -6,6 +14,27 @@ import { listen } from "@tauri-apps/api/event";
 import { X, Plus, Terminal as TerminalIcon } from "lucide-solid";
 import { globalSettings } from "../stores/settings";
 import "xterm/css/xterm.css";
+
+function throttle(fn: (...args: any[]) => void, limit: number) {
+  let lastRan = 0;
+  let timeoutId: any;
+  return (...args: any[]) => {
+    const now = Date.now();
+    clearTimeout(timeoutId);
+    if (now - lastRan >= limit) {
+      fn(...args);
+      lastRan = now;
+    } else {
+      timeoutId = setTimeout(
+        () => {
+          fn(...args);
+          lastRan = Date.now();
+        },
+        limit - (now - lastRan),
+      );
+    }
+  };
+}
 
 interface TerminalPanelProps {
   onClose: () => void;
@@ -48,9 +77,7 @@ export function TerminalPanel(props: TerminalPanelProps) {
   });
 
   return (
-    <div
-      class="flex flex-col h-full shrink-0 overflow-hidden"
-    >
+    <div class="flex flex-col h-full shrink-0 overflow-hidden">
       {/* Header Toolbar / Tabs */}
       <div
         class="flex items-center pr-2 h-[32px] shrink-0 text-xs select-none overflow-x-auto"
@@ -65,8 +92,14 @@ export function TerminalPanel(props: TerminalPanelProps) {
               class="flex items-center h-full pl-2 pr-3 border-r cursor-pointer group"
               style={{
                 "border-color": "var(--color-border)",
-                background: activeTabId() === tab.id ? "var(--color-bg-secondary)" : "transparent",
-                color: activeTabId() === tab.id ? "var(--color-fg)" : "var(--color-fg-muted)",
+                background:
+                  activeTabId() === tab.id
+                    ? "var(--color-bg-secondary)"
+                    : "transparent",
+                color:
+                  activeTabId() === tab.id
+                    ? "var(--color-fg)"
+                    : "var(--color-fg-muted)",
               }}
               onClick={() => setActiveTabId(tab.id)}
               onDblClick={() => setEditingTabId(tab.id)}
@@ -83,12 +116,27 @@ export function TerminalPanel(props: TerminalPanelProps) {
                   style={{ color: "var(--color-fg)" }}
                   autofocus
                   onBlur={(e) => {
-                    setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, name: e.currentTarget.value || "Terminal" } : t)));
+                    setTabs((prev) =>
+                      prev.map((t) =>
+                        t.id === tab.id
+                          ? { ...t, name: e.currentTarget.value || "Terminal" }
+                          : t,
+                      ),
+                    );
                     setEditingTabId(null);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, name: e.currentTarget.value || "Terminal" } : t)));
+                      setTabs((prev) =>
+                        prev.map((t) =>
+                          t.id === tab.id
+                            ? {
+                                ...t,
+                                name: e.currentTarget.value || "Terminal",
+                              }
+                            : t,
+                        ),
+                      );
                       setEditingTabId(null);
                     }
                   }}
@@ -158,33 +206,62 @@ function TerminalInstance(props: TerminalInstanceProps) {
   let unlistenExit: (() => void) | undefined;
   let resizeObserver: ResizeObserver | undefined;
 
+  const throttledFit = throttle(() => {
+    if (props.isActive && fitAddon) {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        // Ignore fit issues during layout updates
+      }
+    }
+  }, 100);
+
   async function initTerminal() {
     term = new Terminal({
       cursorBlink: true,
       fontSize: globalSettings.terminalFontSize,
-      fontFamily: "'FiraCode Nerd Font', 'Fira Code', 'JetBrains Mono', monospace",
+      fontFamily:
+        "'FiraCode Nerd Font', 'Fira Code', 'JetBrains Mono', monospace",
       theme: getTerminalTheme(),
-      scrollback: 5000,
+      scrollback: 10000,
       convertEol: true,
       allowProposedApi: true,
+      // Disable scroll on output so user can scroll up freely
+      smoothScrollDuration: 0,
     });
 
     fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(terminalRef);
-    fitAddon.fit();
+
+    try {
+      fitAddon.fit();
+    } catch (e) {
+      console.warn("Could not fit terminal on open:", e);
+    }
+
+    term.onResize(({ cols, rows }) => {
+      invoke("resize_terminal", { termId: props.id, cols, rows }).catch(
+        () => {},
+      );
+    });
 
     term.onData((data) => {
-      invoke("send_terminal_input", { termId: props.id, input: data }).catch((err) => {
-        term?.write(`\r\nError writing to terminal: ${err}\r\n`);
-      });
+      invoke("send_terminal_input", { termId: props.id, input: data }).catch(
+        (err) => {
+          term?.write(`\r\nError writing to terminal: ${err}\r\n`);
+        },
+      );
     });
 
-    unlistenOutput = await listen<{ id: string; data: string }>("terminal-output", (event) => {
-      if (event.payload.id === props.id) {
-        term?.write(event.payload.data);
-      }
-    });
+    unlistenOutput = await listen<{ id: string; data: string }>(
+      "terminal-output",
+      (event) => {
+        if (event.payload.id === props.id) {
+          term?.write(event.payload.data);
+        }
+      },
+    );
 
     unlistenExit = await listen<string>("terminal-exit", (event) => {
       if (event.payload === props.id) {
@@ -193,7 +270,12 @@ function TerminalInstance(props: TerminalInstanceProps) {
     });
 
     const cwd = props.rootPath;
-    invoke("start_terminal", { termId: props.id, cwd }).catch((err) => {
+    invoke("start_terminal", {
+      termId: props.id,
+      cwd,
+      cols: term.cols,
+      rows: term.rows,
+    }).catch((err) => {
       term?.write(`\r\nFailed to start terminal process: ${err}\r\n`);
     });
   }
@@ -203,7 +285,10 @@ function TerminalInstance(props: TerminalInstanceProps) {
     const runCommand = (e as CustomEvent).detail;
     invoke("send_terminal_input", { termId: props.id, input: "\x03" });
     setTimeout(() => {
-      invoke("send_terminal_input", { termId: props.id, input: runCommand + "\r\n" });
+      invoke("send_terminal_input", {
+        termId: props.id,
+        input: runCommand + "\r\n",
+      });
     }, 300);
   }
 
@@ -211,12 +296,10 @@ function TerminalInstance(props: TerminalInstanceProps) {
     initTerminal();
     window.addEventListener("resize", handleResize);
     window.addEventListener("rune-run-script", handleRunScriptEvent);
-    
+
     // Watch for direct container resizes (e.g., from user dragging the splitter)
     resizeObserver = new ResizeObserver(() => {
-      if (props.isActive) {
-        fitAddon?.fit();
-      }
+      throttledFit();
     });
     if (terminalRef) {
       resizeObserver.observe(terminalRef);
@@ -234,13 +317,15 @@ function TerminalInstance(props: TerminalInstanceProps) {
 
   createEffect(() => {
     if (props.isActive) {
-      setTimeout(() => fitAddon?.fit(), 10);
+      // Use requestAnimationFrame to ensure layout is complete before fitting.
+      // A double-raf ensures xterm canvas resizes correctly after show.
+      requestAnimationFrame(() => requestAnimationFrame(() => fitAddon?.fit()));
     }
   });
 
   createEffect(() => {
     // Access globalSettings.theme to establish a reactive dependency
-    globalSettings.theme; 
+    globalSettings.theme;
     if (term) {
       term.options.fontSize = globalSettings.terminalFontSize;
       term.options.theme = getTerminalTheme();
@@ -280,20 +365,20 @@ function TerminalInstance(props: TerminalInstanceProps) {
   }
 
   function handleResize() {
-    if (props.isActive) {
-      fitAddon?.fit();
-    }
+    throttledFit();
   }
 
   return (
     <div
       ref={terminalRef}
-      class="absolute inset-0 p-2"
+      class="absolute inset-0"
+      onClick={() => term?.focus()}
       style={{
+        // No padding — xterm manages its own internal spacing.
+        // Padding breaks the canvas/cell alignment causing garbled text.
         visibility: props.isActive ? "visible" : "hidden",
         "pointer-events": props.isActive ? "auto" : "none",
       }}
     />
   );
 }
-

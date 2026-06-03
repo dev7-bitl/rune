@@ -172,9 +172,22 @@ export const themes: Record<string, ThemeColors> = {
   "pure-dark": pureDark,
   "pure-white": pureWhite,
   "one-dark": oneDark,
-  "cyan": cyan,
-  "dracula": dracula,
-  "nord": nord,
+  cyan: cyan,
+  dracula: dracula,
+  nord: nord,
   "solarized-light": solarizedLight,
-  "cyberpunk": cyberpunk,
+  cyberpunk: cyberpunk,
 };
+
+import { pluginRegistry } from "../../plugins/registry";
+
+export function getThemeColors(name: string): ThemeColors | undefined {
+  if (themes[name]) return themes[name];
+  return pluginRegistry.getTheme(name);
+}
+
+export function getAllThemeNames(): string[] {
+  return Object.keys(themes).concat(
+    Array.from(pluginRegistry.getThemes().keys()),
+  );
+}

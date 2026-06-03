@@ -1,10 +1,14 @@
 import { Show, For, onCleanup } from "solid-js";
+import { Dynamic } from "solid-js/web";
+import * as LucideIcons from "lucide-solid";
 
 export interface ContextMenuItem {
   label: string;
   action?: () => void;
   separator?: boolean;
   disabled?: boolean;
+  icon?: string;
+  hint?: string;
 }
 
 interface ContextMenuProps {
@@ -33,17 +37,21 @@ export function ContextMenu(props: ContextMenuProps) {
     document.removeEventListener("keydown", handleKeydown);
   });
 
+  const hasAnyIcon = () =>
+    props.items.some((item) => !item.separator && item.icon);
+
   return (
     <div
       data-context-menu
-      class="fixed z-[100] py-1 min-w-[180px] overflow-hidden"
+      class="fixed z-[100] py-1 min-w-[190px] overflow-hidden"
       style={{
         left: `${props.x}px`,
         top: `${props.y}px`,
         background: "var(--color-bg-secondary)",
         border: "1px solid var(--color-border)",
         "border-radius": "6px",
-        "box-shadow": "0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)",
+        "box-shadow":
+          "0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)",
       }}
     >
       <For each={props.items}>
@@ -51,15 +59,23 @@ export function ContextMenu(props: ContextMenuProps) {
           <Show
             when={!item.separator}
             fallback={
-              <div class="my-1 mx-2" style={{ height: "1px", background: "var(--color-border)" }} />
+              <div
+                class="my-1 mx-2"
+                style={{ height: "1px", background: "var(--color-border)" }}
+              />
             }
           >
             <button
-              class="w-full text-left px-3 py-[5px] text-[12px] transition-colors"
+              class="w-full px-3 py-[5px] text-[12px] transition-colors flex items-center justify-between gap-4 text-left border-0"
               style={{
-                color: item.disabled ? "var(--color-fg-muted)" : "var(--color-fg)",
+                color: item.disabled
+                  ? "var(--color-fg-muted)"
+                  : "var(--color-fg)",
+                background: "transparent",
+                cursor: item.disabled ? "default" : "pointer",
+                font: "inherit",
               }}
-              classList={{ "opacity-50 cursor-default": item.disabled }}
+              classList={{ "opacity-50": item.disabled }}
               disabled={item.disabled}
               onClick={() => {
                 props.onClose();
@@ -67,14 +83,56 @@ export function ContextMenu(props: ContextMenuProps) {
               }}
               onMouseEnter={(e) => {
                 if (!item.disabled) {
-                  (e.currentTarget as HTMLElement).style.background = "var(--color-menu-hover)";
+                  (e.currentTarget as HTMLElement).style.background =
+                    "var(--color-menu-hover)";
                 }
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
+                (e.currentTarget as HTMLElement).style.background =
+                  "transparent";
               }}
             >
-              {item.label}
+              <div class="flex items-center gap-2">
+                <Show when={hasAnyIcon()}>
+                  <Show
+                    when={item.icon}
+                    fallback={<span class="w-[14px] h-[14px] shrink-0" />}
+                  >
+                    <span
+                      class="inline-flex items-center justify-center w-[14px] h-[14px] shrink-0"
+                      style={{ color: "var(--color-fg-muted)" }}
+                    >
+                      <Show
+                        when={item.icon!.trim().startsWith("<")}
+                        fallback={
+                          <Show
+                            when={
+                              LucideIcons[
+                                item.icon! as keyof typeof LucideIcons
+                              ]
+                            }
+                          >
+                            {(Icon) => (
+                              <Dynamic component={Icon as any} size={14} />
+                            )}
+                          </Show>
+                        }
+                      >
+                        <div
+                          class="w-[14px] h-[14px] flex items-center justify-center"
+                          innerHTML={item.icon}
+                        />
+                      </Show>
+                    </span>
+                  </Show>
+                </Show>
+                <span>{item.label}</span>
+              </div>
+              <Show when={item.hint}>
+                <span class="text-[10px] text-[var(--color-fg-muted)] font-sans">
+                  {item.hint}
+                </span>
+              </Show>
             </button>
           </Show>
         )}

@@ -1,5 +1,14 @@
 import { createSignal } from "solid-js";
-import { readDir, readTextFile, writeTextFile, readFile, mkdir, remove, rename, watch } from "@tauri-apps/plugin-fs";
+import {
+  readDir,
+  readTextFile,
+  writeTextFile,
+  readFile,
+  mkdir,
+  remove,
+  rename,
+  watch,
+} from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
 import { basename } from "@tauri-apps/api/path";
 import { workspaceSettings } from "../stores/settings";
@@ -10,7 +19,16 @@ function joinPath(...parts: string[]): string {
   return parts.join(sep).replace(/[/\\]+/g, sep);
 }
 
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "svg", "bmp", "webp", "ico"]);
+const IMAGE_EXTS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "bmp",
+  "webp",
+  "ico",
+]);
 
 function getExt(path: string): string {
   if (!path.includes(".")) return "";
@@ -98,16 +116,52 @@ function sortEntries(entries: FileEntry[]): FileEntry[] {
   });
 }
 
-function shouldSkip(name: string): boolean {
-  return workspaceSettings.excludeItems.includes(name);
+function shouldSkip(name: string, relPath: string): boolean {
+  const normRelPath = relPath.replace(/\\/g, "/");
+  return workspaceSettings.excludeItems.some((item) => {
+    const cleanItem = item
+      .trim()
+      .replace(/[/\\]+$/, "")
+      .replace(/^[/\\]+/, "");
+    if (!cleanItem) return false;
+
+    const normCleanItem = cleanItem.replace(/\\/g, "/");
+
+    if (name === normCleanItem || normRelPath === normCleanItem) {
+      return true;
+    }
+
+    if (normRelPath.startsWith(normCleanItem + "/")) {
+      return true;
+    }
+
+    if (normCleanItem.includes("*")) {
+      const regexStr =
+        "^" +
+        normCleanItem
+          .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, ".*") +
+        "$";
+      try {
+        const regex = new RegExp(regexStr, "i");
+        if (regex.test(name) || regex.test(normRelPath)) {
+          return true;
+        }
+      } catch {}
+    }
+
+    return false;
+  });
 }
 
 const STORAGE_KEY = "rune-last-folder";
 
 export function useFileSystem() {
-  const isFreshWindow = new URLSearchParams(window.location.search).has("fresh");
+  const isFreshWindow = new URLSearchParams(window.location.search).has(
+    "fresh",
+  );
   const [rootPath, setRootPath] = createSignal<string | null>(
-    isFreshWindow ? null : localStorage.getItem(STORAGE_KEY)
+    isFreshWindow ? null : localStorage.getItem(STORAGE_KEY),
   );
   const [tree, setTree] = createSignal<FileEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -119,7 +173,9 @@ export function useFileSystem() {
     try {
       const unwatchFn = await watch(
         dirPath,
-        () => { refreshPreservingExpanded(); },
+        () => {
+          refreshPreservingExpanded();
+        },
         { recursive: false, delayMs: 500 },
       );
       activeWatchers.set(dirPath, unwatchFn);
@@ -145,23 +201,38 @@ export function useFileSystem() {
 
   async function readDirectory(dirPath: string): Promise<FileEntry[]> {
     const entries = await readDir(dirPath);
-    
-    const validEntries = entries.filter(e => e.name && !shouldSkip(e.name));
-    
     const sep = dirPath.includes("\\") ? "\\" : "/";
     const dirPrefix = dirPath.endsWith(sep) ? dirPath : dirPath + sep;
-    
-    const fileEntries = validEntries.map((entry) => {
-      const name = entry.name!;
-      const entryPath = dirPrefix + name;
-      return {
-        name,
+    const root = rootPath();
+
+    const fileEntries: FileEntry[] = [];
+    for (const entry of entries) {
+      if (!entry.name) continue;
+      const entryPath = dirPrefix + entry.name;
+
+      let relPath = entry.name;
+      if (root) {
+        const normalizedRoot = root.replace(/\\/g, "/").replace(/\/+$/, "");
+        const normalizedEntry = entryPath.replace(/\\/g, "/");
+        if (normalizedEntry.startsWith(normalizedRoot)) {
+          relPath = normalizedEntry
+            .substring(normalizedRoot.length)
+            .replace(/^\/+/, "");
+        }
+      }
+
+      if (shouldSkip(entry.name, relPath)) {
+        continue;
+      }
+
+      fileEntries.push({
+        name: entry.name,
         path: entryPath,
         isDirectory: entry.isDirectory,
         isExpanded: false,
         children: entry.isDirectory ? [] : undefined,
-      };
-    });
+      });
+    }
 
     return sortEntries(fileEntries);
   }
@@ -177,6 +248,12 @@ export function useFileSystem() {
       if (selected && typeof selected === "string") {
         setRootPath(selected);
         localStorage.setItem(STORAGE_KEY, selected);
+        
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          await invoke("register_window_workspace", { workspace: selected });
+        } catch (err) {}
+
         const entries = await readDirectory(selected);
         setTree(entries);
         startWatching(selected);
@@ -188,7 +265,10 @@ export function useFileSystem() {
     }
   }
 
-  function findEntry(entries: FileEntry[], path: string): FileEntry | undefined {
+  function findEntry(
+    entries: FileEntry[],
+    path: string,
+  ): FileEntry | undefined {
     for (const e of entries) {
       if (e.path === path) return e;
       if (e.children) {
@@ -199,10 +279,15 @@ export function useFileSystem() {
     return undefined;
   }
 
-  function updateTree(entries: FileEntry[], path: string, updater: (e: FileEntry) => FileEntry): FileEntry[] {
+  function updateTree(
+    entries: FileEntry[],
+    path: string,
+    updater: (e: FileEntry) => FileEntry,
+  ): FileEntry[] {
     return entries.map((e) => {
       if (e.path === path) return updater(e);
-      if (e.children) return { ...e, children: updateTree(e.children, path, updater) };
+      if (e.children)
+        return { ...e, children: updateTree(e.children, path, updater) };
       return e;
     });
   }
@@ -223,12 +308,14 @@ export function useFileSystem() {
       });
       toRemove.forEach(stopWatching);
 
-      setTree(updateTree(tree(), dirPath, (e) => ({ ...e, isExpanded: false })));
+      setTree(
+        updateTree(tree(), dirPath, (e) => ({ ...e, isExpanded: false })),
+      );
     } else {
       const children = entry.children?.length
         ? entry.children
         : await readDirectory(dirPath);
-      
+
       startWatching(dirPath);
 
       setTree(
@@ -236,7 +323,7 @@ export function useFileSystem() {
           ...e,
           children,
           isExpanded: true,
-        }))
+        })),
       );
     }
   }
@@ -247,7 +334,7 @@ export function useFileSystem() {
     const children = entry.children?.length
       ? entry.children
       : await readDirectory(dirPath);
-      
+
     startWatching(dirPath);
 
     setTree(
@@ -255,11 +342,13 @@ export function useFileSystem() {
         ...e,
         children,
         isExpanded: true,
-      }))
+      })),
     );
   }
 
-  async function readFileContent(filePath: string): Promise<{ content: string; language: string; fileType: FileType }> {
+  async function readFileContent(
+    filePath: string,
+  ): Promise<{ content: string; language: string; fileType: FileType }> {
     const ext = getExt(filePath);
     const fileType = getFileType(ext);
 
@@ -275,7 +364,10 @@ export function useFileSystem() {
     return { content, language: fileExtensionToLanguage(ext), fileType };
   }
 
-  async function writeFileContent(filePath: string, content: string): Promise<void> {
+  async function writeFileContent(
+    filePath: string,
+    content: string,
+  ): Promise<void> {
     await writeTextFile(filePath, content);
   }
 
@@ -288,10 +380,22 @@ export function useFileSystem() {
       try {
         stopAllWatchers();
         const entries = await readDirectory(saved);
-        console.log(`[rune] fs.init readDirectory: ${Math.round(performance.now() - t0)}ms (${entries.length} entries)`);
+        console.log(
+          `[rune] fs.init readDirectory: ${Math.round(performance.now() - t0)}ms (${entries.length} entries)`,
+        );
         setTree(entries);
         startWatching(saved);
-        console.log(`[rune] fs.init total: ${Math.round(performance.now() - t0)}ms`);
+        
+        try {
+          const { invoke } = await import("@tauri-apps/api/core");
+          await invoke("register_window_workspace", { workspace: saved });
+        } catch (err) {
+          console.error("[rune] register_window_workspace error:", err);
+        }
+        
+        console.log(
+          `[rune] fs.init total: ${Math.round(performance.now() - t0)}ms`,
+        );
       } catch {
         setRootPath(null);
         localStorage.removeItem(STORAGE_KEY);
@@ -359,7 +463,9 @@ export function useFileSystem() {
       currentPath = joinPath(currentPath, dirName);
       try {
         await mkdir(currentPath);
-      } catch { /* dir may already exist */ }
+      } catch {
+        /* dir may already exist */
+      }
     }
 
     const fileName = parts[parts.length - 1]!;
@@ -379,7 +485,9 @@ export function useFileSystem() {
     function removeFromTree(entries: FileEntry[]): FileEntry[] {
       return entries
         .filter((e) => e.path !== filePath)
-        .map((e) => (e.children ? { ...e, children: removeFromTree(e.children) } : e));
+        .map((e) =>
+          e.children ? { ...e, children: removeFromTree(e.children) } : e,
+        );
     }
     setTree(removeFromTree(tree()));
   }
@@ -428,6 +536,14 @@ export function useFileSystem() {
     try {
       setRootPath(folderPath);
       localStorage.setItem(STORAGE_KEY, folderPath);
+      
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("register_window_workspace", { workspace: folderPath });
+      } catch (err) {
+        console.error("[rune] register_window_workspace error:", err);
+      }
+
       const entries = await readDirectory(folderPath);
       setTree(entries);
       startWatching(folderPath);

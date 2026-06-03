@@ -1,7 +1,11 @@
 import { createContext, useContext, createEffect, type JSX } from "solid-js";
 import type { ThemeColors, ThemeMode } from "../../types";
-import { themes } from "./themes";
-import { globalSettings, setGlobalSettings, saveGlobalSettings } from "../../stores/settings";
+import { themes, getThemeColors } from "./themes";
+import {
+  globalSettings,
+  setGlobalSettings,
+  saveGlobalSettings,
+} from "../../stores/settings";
 
 interface ThemeContextValue {
   theme: () => ThemeColors;
@@ -14,10 +18,10 @@ const ThemeContext = createContext<ThemeContextValue>();
 
 export function useThemeContext() {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useThemeContext must be used within ThemeProvider");
+  if (!ctx)
+    throw new Error("useThemeContext must be used within ThemeProvider");
   return ctx;
 }
-
 
 function applyThemeToDOM(t: ThemeColors, isLight: boolean) {
   const root = document.documentElement;
@@ -62,11 +66,16 @@ export function ThemeProvider(props: ThemeProviderProps) {
       const base = themes["rune-blue"]!;
       return { ...base, ...globalSettings.customTheme } as ThemeColors;
     }
-    return themes[globalSettings.theme] ?? themes["rune-blue"]!;
+    return getThemeColors(globalSettings.theme) ?? themes["rune-blue"]!;
   };
 
   const isLightThemeActive = () => {
-    if (globalSettings.theme === "rune-light" || globalSettings.theme === "pure-white" || globalSettings.theme === "solarized-light") return true;
+    if (
+      globalSettings.theme === "rune-light" ||
+      globalSettings.theme === "pure-white" ||
+      globalSettings.theme === "solarized-light"
+    )
+      return true;
     if (globalSettings.theme === "custom") {
       const t = theme();
       const bg = t.bg || "#0B0F00";
@@ -97,7 +106,14 @@ export function ThemeProvider(props: ThemeProviderProps) {
   });
 
   return (
-    <ThemeContext.Provider value={{ theme, themeName: () => globalSettings.theme, setTheme: handleSetTheme, mode }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        themeName: () => globalSettings.theme,
+        setTheme: handleSetTheme,
+        mode,
+      }}
+    >
       {props.children}
     </ThemeContext.Provider>
   );

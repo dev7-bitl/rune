@@ -15,12 +15,16 @@ export function TabBar(props: TabBarProps) {
     <Show when={props.tabs.length > 0}>
       <div
         ref={(el) => {
-          el.addEventListener("wheel", (e) => {
-            if (e.deltaY !== 0) {
-              e.preventDefault();
-              el.scrollLeft += e.deltaY;
-            }
-          }, { passive: false });
+          el.addEventListener(
+            "wheel",
+            (e) => {
+              if (e.deltaY !== 0) {
+                e.preventDefault();
+                el.scrollLeft += e.deltaY;
+              }
+            },
+            { passive: false },
+          );
         }}
         class="flex items-end h-[32px] shrink-0 overflow-x-auto"
         style={{

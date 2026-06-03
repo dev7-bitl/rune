@@ -16,18 +16,26 @@ export function MarkdownPreview(props: MarkdownPreviewProps) {
     if (syncing || !previewRef || !props.editorScrollElement) return;
     syncing = true;
     const editor = props.editorScrollElement;
-    const ratio = editor.scrollTop / (editor.scrollHeight - editor.clientHeight || 1);
-    previewRef.scrollTop = ratio * (previewRef.scrollHeight - previewRef.clientHeight);
-    requestAnimationFrame(() => { syncing = false; });
+    const ratio =
+      editor.scrollTop / (editor.scrollHeight - editor.clientHeight || 1);
+    previewRef.scrollTop =
+      ratio * (previewRef.scrollHeight - previewRef.clientHeight);
+    requestAnimationFrame(() => {
+      syncing = false;
+    });
   }
 
   function syncFromPreview() {
     if (syncing || !previewRef || !props.editorScrollElement) return;
     syncing = true;
     const editor = props.editorScrollElement;
-    const ratio = previewRef.scrollTop / (previewRef.scrollHeight - previewRef.clientHeight || 1);
+    const ratio =
+      previewRef.scrollTop /
+      (previewRef.scrollHeight - previewRef.clientHeight || 1);
     editor.scrollTop = ratio * (editor.scrollHeight - editor.clientHeight);
-    requestAnimationFrame(() => { syncing = false; });
+    requestAnimationFrame(() => {
+      syncing = false;
+    });
   }
 
   onMount(() => {

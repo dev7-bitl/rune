@@ -5,6 +5,80 @@ interface MenuBarProps {
   menus: MenuDefinition[];
 }
 
+function MenuItemView(props: { item: MenuItem; onClose: () => void }) {
+  const [subOpen, setSubOpen] = createSignal(false);
+  const hasSubmenu = () => !!props.item.submenu?.length;
+
+  if (props.item.separator) {
+    return (
+      <div
+        class="my-1 mx-2"
+        style={{ height: "1px", background: "var(--color-border)" }}
+      />
+    );
+  }
+
+  return (
+    <div
+      class="relative"
+      onMouseEnter={() => hasSubmenu() && setSubOpen(true)}
+      onMouseLeave={() => setSubOpen(false)}
+    >
+      <button
+        class="w-full text-left px-4 py-[5px] text-[12px] flex justify-between items-center gap-4 transition-colors"
+        style={{
+          color: props.item.disabled
+            ? "var(--color-fg-muted)"
+            : "var(--color-fg)",
+        }}
+        classList={{ "opacity-50 cursor-default": props.item.disabled }}
+        disabled={props.item.disabled}
+        onClick={() => {
+          if (!hasSubmenu()) {
+            props.onClose();
+            props.item.action?.();
+          }
+        }}
+        onMouseEnter={(e) => {
+          if (!props.item.disabled)
+            (e.currentTarget as HTMLElement).style.background =
+              "var(--color-menu-hover)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.background = "transparent";
+        }}
+      >
+        <span>{props.item.label}</span>
+        <span
+          style={{ color: "var(--color-fg-muted)" }}
+          class="ml-6 text-[10px] flex items-center gap-1"
+        >
+          {props.item.accelerator && <span>{props.item.accelerator}</span>}
+          {hasSubmenu() && <span>▶</span>}
+        </span>
+      </button>
+
+      {/* Submenu flyout */}
+      <Show when={subOpen() && hasSubmenu()}>
+        <div
+          class="absolute left-full top-0 py-1 z-50 min-w-[220px] max-h-[400px] overflow-y-auto"
+          style={{
+            background: "var(--color-bg-secondary)",
+            border: "1px solid var(--color-border)",
+            "box-shadow": "0 4px 12px rgba(0,0,0,0.4)",
+          }}
+        >
+          <For each={props.item.submenu}>
+            {(subItem) => (
+              <MenuItemView item={subItem} onClose={props.onClose} />
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
+  );
+}
+
 export function MenuBar(props: MenuBarProps) {
   const [openMenu, setOpenMenu] = createSignal<number | null>(null);
 
@@ -25,11 +99,6 @@ export function MenuBar(props: MenuBarProps) {
 
   document.addEventListener("click", handleClickOutside);
   onCleanup(() => document.removeEventListener("click", handleClickOutside));
-
-  function executeItem(item: MenuItem) {
-    closeMenus();
-    item.action?.();
-  }
 
   return (
     <nav class="flex shrink-0 h-full items-center" data-menu-bar>
@@ -69,54 +138,7 @@ export function MenuBar(props: MenuBarProps) {
                 }}
               >
                 <For each={menu.items}>
-                  {(item) => (
-                    <Show
-                      when={!item.separator}
-                      fallback={
-                        <div
-                          class="my-1 mx-2"
-                          style={{
-                            height: "1px",
-                            background: "var(--color-border)",
-                          }}
-                        />
-                      }
-                    >
-                      <button
-                        class="w-full text-left px-4 py-[5px] text-[12px] flex justify-between items-center transition-colors"
-                        style={{
-                          color: item.disabled
-                            ? "var(--color-fg-muted)"
-                            : "var(--color-fg)",
-                        }}
-                        classList={{
-                          "opacity-50 cursor-default": item.disabled,
-                        }}
-                        disabled={item.disabled}
-                        onClick={() => executeItem(item)}
-                        onMouseEnter={(e) => {
-                          if (!item.disabled) {
-                            (e.currentTarget as HTMLElement).style.background =
-                              "var(--color-menu-hover)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.background =
-                            "transparent";
-                        }}
-                      >
-                        <span>{item.label}</span>
-                        <Show when={item.accelerator}>
-                          <span
-                            style={{ color: "var(--color-fg-muted)" }}
-                            class="ml-6 text-[10px]"
-                          >
-                            {item.accelerator}
-                          </span>
-                        </Show>
-                      </button>
-                    </Show>
-                  )}
+                  {(item) => <MenuItemView item={item} onClose={closeMenus} />}
                 </For>
               </div>
             </Show>

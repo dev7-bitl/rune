@@ -1,10 +1,36 @@
 import { onMount, onCleanup } from "solid-js";
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, drawSelection, rectangularSelection, highlightSpecialChars } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightActiveLine,
+  drawSelection,
+  rectangularSelection,
+  highlightSpecialChars,
+} from "@codemirror/view";
 import { EditorState, Compartment } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
-import { foldGutter, indentOnInput, bracketMatching, foldKeymap, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import {
+  foldGutter,
+  indentOnInput,
+  bracketMatching,
+  foldKeymap,
+  syntaxHighlighting,
+  defaultHighlightStyle,
+} from "@codemirror/language";
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
@@ -43,16 +69,26 @@ function getLanguageExtension(lang: string): Extension {
       return python();
     case "markdown":
       return markdown();
-    case "cpp": return cpp();
-    case "java": return java();
-    case "sql": return sql();
-    case "php": return php();
-    case "xml": return xml();
-    case "vue": return vue();
-    case "toml": return StreamLanguage.define(toml);
-    case "yaml": return StreamLanguage.define(yaml);
-    case "shell": return StreamLanguage.define(shell);
-    case "go": return StreamLanguage.define(go);
+    case "cpp":
+      return cpp();
+    case "java":
+      return java();
+    case "sql":
+      return sql();
+    case "php":
+      return php();
+    case "xml":
+      return xml();
+    case "vue":
+      return vue();
+    case "toml":
+      return StreamLanguage.define(toml);
+    case "yaml":
+      return StreamLanguage.define(yaml);
+    case "shell":
+      return StreamLanguage.define(shell);
+    case "go":
+      return StreamLanguage.define(go);
     default:
       return [];
   }
@@ -100,7 +136,9 @@ export function useCodeMirror(options: UseCodeMirrorOptions) {
           ...completionKeymap,
           indentWithTab,
         ]),
-        languageCompartment.of(getLanguageExtension(options.language ?? "text")),
+        languageCompartment.of(
+          getLanguageExtension(options.language ?? "text"),
+        ),
         themeCompartment.of(options.theme ?? []),
         wordWrapCompartment.of(options.wordWrap ? EditorView.lineWrapping : []),
         EditorView.updateListener.of((update) => {
@@ -150,7 +188,9 @@ export function useCodeMirror(options: UseCodeMirrorOptions) {
   function setWordWrap(enabled: boolean) {
     if (!view) return;
     view.dispatch({
-      effects: wordWrapCompartment.reconfigure(enabled ? EditorView.lineWrapping : []),
+      effects: wordWrapCompartment.reconfigure(
+        enabled ? EditorView.lineWrapping : [],
+      ),
     });
   }
 

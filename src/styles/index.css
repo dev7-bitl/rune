@@ -8,12 +8,12 @@
 }
 
 :root {
-  --color-bg: #0B0F00;
+  --color-bg: #0b0f00;
   --color-bg-secondary: #111a00;
   --color-bg-tertiary: #1a2400;
   --color-fg: #d4d4d4;
   --color-fg-muted: #6b7280;
-  --color-accent: #CDFF07;
+  --color-accent: #cdff07;
   --color-accent-hover: #a8d406;
   --color-border: #1e2a00;
   --color-border-focus: #00ff41;
@@ -59,11 +59,20 @@
 }
 
 body,
-h1, h2, h3, h4, h5, h6,
-p, blockquote,
-dl, dd, fieldset,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+dl,
+dd,
+fieldset,
 figure,
-ul, ol {
+ul,
+ol {
   margin: 0;
 }
 
@@ -76,7 +85,12 @@ body,
 }
 
 body {
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -147,13 +161,41 @@ body {
 }
 
 /* Markdown Preview */
-.markdown-preview h1 { font-size: 2em; font-weight: 700; margin: 0.67em 0; border-bottom: 1px solid var(--color-border); padding-bottom: 0.3em; }
-.markdown-preview h2 { font-size: 1.5em; font-weight: 600; margin: 0.83em 0; border-bottom: 1px solid var(--color-border); padding-bottom: 0.3em; }
-.markdown-preview h3 { font-size: 1.25em; font-weight: 600; margin: 1em 0; }
-.markdown-preview h4 { font-size: 1em; font-weight: 600; margin: 1em 0; }
-.markdown-preview p { margin: 0.8em 0; }
-.markdown-preview ul, .markdown-preview ol { margin: 0.5em 0; padding-left: 2em; }
-.markdown-preview li { margin: 0.3em 0; }
+.markdown-preview h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.67em 0;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.3em;
+}
+.markdown-preview h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0.83em 0;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.3em;
+}
+.markdown-preview h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 1em 0;
+}
+.markdown-preview h4 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 1em 0;
+}
+.markdown-preview p {
+  margin: 0.8em 0;
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+.markdown-preview li {
+  margin: 0.3em 0;
+}
 .markdown-preview code {
   background: var(--color-bg-tertiary);
   padding: 0.15em 0.4em;
@@ -189,7 +231,8 @@ body {
   margin: 1em 0;
   width: 100%;
 }
-.markdown-preview th, .markdown-preview td {
+.markdown-preview th,
+.markdown-preview td {
   border: 1px solid var(--color-border);
   padding: 0.5em 0.75em;
   text-align: left;
@@ -205,4 +248,20 @@ body {
 }
 .markdown-preview img {
   max-width: 100%;
+}
+
+/* Custom Scrollbar for xterm */
+.xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.xterm-viewport::-webkit-scrollbar-track {
+  background: var(--color-bg) !important;
+}
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb) !important;
+  border-radius: 4px;
+}
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent) !important;
 }

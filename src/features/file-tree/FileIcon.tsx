@@ -1,5 +1,5 @@
 import { createSignal, createEffect } from "solid-js";
-import { getFileIconName, getFolderIconName, getSvg, fetchSvg } from "../../utils/iconMap";
+import { pluginRegistry } from "../../plugins/registry";
 
 interface FileIconProps {
   name: string;
@@ -8,25 +8,18 @@ interface FileIconProps {
 }
 
 export function FileIcon(props: FileIconProps) {
-  const iconName = () => {
-    if (props.isDirectory) {
-      return getFolderIconName(props.name, props.isExpanded ?? false);
-    }
-    return getFileIconName(props.name);
-  };
-
   const [svg, setSvg] = createSignal<string | undefined>(undefined);
 
   createEffect(() => {
-    const name = iconName();
-    const cached = getSvg(name);
-    if (cached) {
-      setSvg(cached);
+    const iconResult = pluginRegistry.getIcon(
+      props.name,
+      props.isDirectory,
+      props.isExpanded ?? false,
+    );
+    if (iconResult instanceof Promise) {
+      iconResult.then((s) => setSvg(s));
     } else {
-      fetchSvg(name).then(s => {
-        // Only update if still the same icon
-        if (iconName() === name) setSvg(s);
-      });
+      setSvg(iconResult);
     }
   });
 
@@ -34,7 +27,11 @@ export function FileIcon(props: FileIconProps) {
     <span
       class="shrink-0 inline-flex items-center justify-center"
       style={{ width: "16px", height: "16px", "pointer-events": "none" }}
-      innerHTML={svg() ? svg()! : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"></svg>'}
+      innerHTML={
+        svg()
+          ? svg()!
+          : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"></svg>'
+      }
     />
   );
 }

@@ -19,10 +19,37 @@ interface WorkspaceSearchProps {
 }
 
 function shouldSkip(name: string): boolean {
-  return name.startsWith(".") || name === "node_modules" || name === "target" || name === "dist" || name === ".git";
+  return (
+    name.startsWith(".") ||
+    name === "node_modules" ||
+    name === "target" ||
+    name === "dist" ||
+    name === ".git"
+  );
 }
 
-const BINARY_EXTS = new Set(["png", "jpg", "jpeg", "gif", "svg", "bmp", "webp", "ico", "pdf", "zip", "tar", "gz", "woff", "woff2", "ttf", "eot", "exe", "dll", "so", "dylib"]);
+const BINARY_EXTS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "bmp",
+  "webp",
+  "ico",
+  "pdf",
+  "zip",
+  "tar",
+  "gz",
+  "woff",
+  "woff2",
+  "ttf",
+  "eot",
+  "exe",
+  "dll",
+  "so",
+  "dylib",
+]);
 
 function isBinary(name: string): boolean {
   const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
@@ -44,12 +71,14 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
         if (shouldSkip(entry.name)) continue;
         const path = await join(dirPath, entry.name);
         if (entry.isDirectory) {
-          files.push(...await collectFiles(path));
+          files.push(...(await collectFiles(path)));
         } else if (!isBinary(entry.name)) {
           files.push(path);
         }
       }
-    } catch { /* skip unreadable dirs */ }
+    } catch {
+      /* skip unreadable dirs */
+    }
     return files;
   }
 
@@ -85,7 +114,9 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
               });
             }
           }
-        } catch { /* skip unreadable files */ }
+        } catch {
+          /* skip unreadable files */
+        }
       }
 
       setResults(found);
@@ -145,7 +176,15 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
           class="flex items-center gap-2 px-3 h-[36px] shrink-0"
           style={{ "border-bottom": "1px solid var(--color-border)" }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style={{ color: "var(--color-fg-muted)", "flex-shrink": "0" }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            style={{ color: "var(--color-fg-muted)", "flex-shrink": "0" }}
+          >
             <circle cx="7" cy="7" r="5" />
             <line x1="11" y1="11" x2="14" y2="14" />
           </svg>
@@ -163,14 +202,20 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
             }}
           />
           {searching() && (
-            <span class="text-[11px] shrink-0" style={{ color: "var(--color-fg-muted)" }}>
+            <span
+              class="text-[11px] shrink-0"
+              style={{ color: "var(--color-fg-muted)" }}
+            >
               Searching...
             </span>
           )}
         </div>
         <div class="flex-1 overflow-y-auto py-1">
           <Show when={results().length > 0}>
-            <div class="px-3 py-1 text-[11px]" style={{ color: "var(--color-fg-muted)" }}>
+            <div
+              class="px-3 py-1 text-[11px]"
+              style={{ color: "var(--color-fg-muted)" }}
+            >
               {results().length} results
             </div>
           </Show>
@@ -179,7 +224,10 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
               <button
                 class="w-full flex flex-col px-3 py-[5px] text-left transition-colors"
                 style={{
-                  background: selectedIndex() === i() ? "var(--color-bg-tertiary)" : "transparent",
+                  background:
+                    selectedIndex() === i()
+                      ? "var(--color-bg-tertiary)"
+                      : "transparent",
                   cursor: "pointer",
                   border: "none",
                 }}
@@ -190,7 +238,9 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
                 }}
               >
                 <div class="flex items-center gap-2 text-[12px]">
-                  <span style={{ color: "var(--color-fg)" }}>{result.fileName}</span>
+                  <span style={{ color: "var(--color-fg)" }}>
+                    {result.fileName}
+                  </span>
                   <span style={{ color: "var(--color-fg-muted)" }}>
                     :{result.line}:{result.col}
                   </span>
@@ -202,13 +252,20 @@ export function WorkspaceSearch(props: WorkspaceSearchProps) {
                     "font-family": "'JetBrains Mono', monospace",
                   }}
                 >
-                  {highlightMatch(result.text, result.matchStart, result.matchEnd)}
+                  {highlightMatch(
+                    result.text,
+                    result.matchStart,
+                    result.matchEnd,
+                  )}
                 </div>
               </button>
             )}
           </For>
           <Show when={!searching() && query().trim() && results().length === 0}>
-            <div class="px-3 py-4 text-center text-xs" style={{ color: "var(--color-fg-muted)" }}>
+            <div
+              class="px-3 py-4 text-center text-xs"
+              style={{ color: "var(--color-fg-muted)" }}
+            >
               No results found
             </div>
           </Show>

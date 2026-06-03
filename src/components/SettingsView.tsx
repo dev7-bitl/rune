@@ -1,29 +1,70 @@
-import { createSignal, For, Show, onCleanup } from "solid-js";
-import { 
-  globalSettings, setGlobalSettings, saveGlobalSettings, 
-  workspaceSettings, setWorkspaceSettings, saveWorkspaceSettings 
+import {
+  createSignal,
+  For,
+  Show,
+  onCleanup,
+  onMount,
+  createEffect,
+} from "solid-js";
+import {
+  globalSettings,
+  setGlobalSettings,
+  saveGlobalSettings,
+  workspaceSettings,
+  setWorkspaceSettings,
+  saveWorkspaceSettings,
+  loadWorkspaceSettings,
+  workspaceRootPath,
 } from "../stores/settings";
-import { themes } from "../features/theme/themes";
+import { getAllThemeNames } from "../features/theme/themes";
 
 export function SettingsView() {
-  const [activeTab, setActiveTab] = createSignal<"global" | "workspace">("global");
+  const [activeTab, setActiveTab] = createSignal<"global" | "workspace">(
+    "global",
+  );
+
+  onMount(() => {
+    if (workspaceRootPath) {
+      loadWorkspaceSettings(workspaceRootPath);
+    }
+  });
+
+  createEffect(() => {
+    if (activeTab() === "workspace" && workspaceRootPath) {
+      loadWorkspaceSettings(workspaceRootPath);
+    }
+  });
 
   return (
-    <div class="h-full w-full overflow-y-auto p-8" style={{ color: "var(--color-fg)", background: "var(--color-bg)" }}>
+    <div
+      class="h-full w-full overflow-y-auto p-8"
+      style={{ color: "var(--color-fg)", background: "var(--color-bg)" }}
+    >
       <div class="max-w-3xl mx-auto">
         <h1 class="text-3xl font-bold mb-8">Settings</h1>
-        
-        <div class="flex gap-4 border-b mb-8" style={{ "border-color": "var(--color-border)" }}>
-          <button 
+
+        <div
+          class="flex gap-4 border-b mb-8"
+          style={{ "border-color": "var(--color-border)" }}
+        >
+          <button
             class={`px-4 py-2 font-medium transition-colors ${activeTab() === "global" ? "text-[var(--color-accent)]" : "text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"}`}
-            style={activeTab() === "global" ? { "border-bottom": "2px solid var(--color-accent)" } : {}}
+            style={
+              activeTab() === "global"
+                ? { "border-bottom": "2px solid var(--color-accent)" }
+                : {}
+            }
             onClick={() => setActiveTab("global")}
           >
             Global Settings
           </button>
-          <button 
+          <button
             class={`px-4 py-2 font-medium transition-colors ${activeTab() === "workspace" ? "text-[var(--color-accent)]" : "text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"}`}
-            style={activeTab() === "workspace" ? { "border-bottom": "2px solid var(--color-accent)" } : {}}
+            style={
+              activeTab() === "workspace"
+                ? { "border-bottom": "2px solid var(--color-accent)" }
+                : {}
+            }
             onClick={() => setActiveTab("workspace")}
           >
             Workspace Settings
@@ -33,7 +74,7 @@ export function SettingsView() {
         <Show when={activeTab() === "global"}>
           <GlobalSettingsForm />
         </Show>
-        
+
         <Show when={activeTab() === "workspace"}>
           <WorkspaceSettingsForm />
         </Show>
@@ -44,13 +85,19 @@ export function SettingsView() {
 
 import type { JSX } from "solid-js";
 
-function SettingRow(props: { label: string; description?: string; children: JSX.Element }) {
+function SettingRow(props: {
+  label: string;
+  description?: string;
+  children: JSX.Element;
+}) {
   return (
     <div class="flex items-center justify-between py-4 border-b border-[var(--color-border)]">
       <div class="flex flex-col pr-8">
         <span class="font-medium text-sm">{props.label}</span>
         <Show when={props.description}>
-          <span class="text-xs text-[var(--color-fg-muted)] mt-1">{props.description}</span>
+          <span class="text-xs text-[var(--color-fg-muted)] mt-1">
+            {props.description}
+          </span>
         </Show>
       </div>
       <div class="w-64 shrink-0 flex items-center justify-end">
@@ -60,9 +107,9 @@ function SettingRow(props: { label: string; description?: string; children: JSX.
   );
 }
 
-function CustomSelect(props: { 
-  value: string; 
-  options: { label: string; value: string }[]; 
+function CustomSelect(props: {
+  value: string;
+  options: { label: string; value: string }[];
   onChange: (v: string) => void;
   width?: string;
 }) {
@@ -78,30 +125,45 @@ function CustomSelect(props: {
   window.addEventListener("click", handleClickOutside);
   onCleanup(() => window.removeEventListener("click", handleClickOutside));
 
-  const selectedLabel = () => props.options.find(o => o.value === props.value)?.label || props.value;
+  const selectedLabel = () =>
+    props.options.find((o) => o.value === props.value)?.label || props.value;
 
   return (
-    <div ref={containerRef} class="relative" style={{ width: props.width || "200px" }}>
-      <div 
+    <div
+      ref={containerRef}
+      class="relative"
+      style={{ width: props.width || "200px" }}
+    >
+      <div
         class="flex items-center justify-between px-3 py-1.5 rounded-md border cursor-pointer select-none text-sm transition-colors"
         style={{
           background: "var(--color-bg-secondary)",
           color: "var(--color-fg)",
-          "border-color": isOpen() ? "var(--color-accent)" : "var(--color-border)"
+          "border-color": isOpen()
+            ? "var(--color-accent)"
+            : "var(--color-border)",
         }}
         onClick={() => setIsOpen(!isOpen())}
       >
         <span class="truncate">{selectedLabel()}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class={`transition-transform ${isOpen() ? 'rotate-180' : ''}`}>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          class={`transition-transform ${isOpen() ? "rotate-180" : ""}`}
+        >
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </div>
       <Show when={isOpen()}>
-        <div 
+        <div
           class="absolute z-50 mt-1 w-full rounded-md border shadow-lg overflow-hidden flex flex-col max-h-60 overflow-y-auto"
           style={{
             background: "var(--color-bg-secondary)",
-            "border-color": "var(--color-border)"
+            "border-color": "var(--color-border)",
           }}
         >
           <For each={props.options}>
@@ -109,19 +171,28 @@ function CustomSelect(props: {
               <div
                 class="px-3 py-1.5 text-sm cursor-pointer select-none"
                 style={{
-                  color: props.value === opt.value ? "var(--color-accent)" : "var(--color-fg)",
-                  "background-color": props.value === opt.value ? "var(--color-bg-tertiary)" : "transparent"
+                  color:
+                    props.value === opt.value
+                      ? "var(--color-accent)"
+                      : "var(--color-fg)",
+                  "background-color":
+                    props.value === opt.value
+                      ? "var(--color-bg-tertiary)"
+                      : "transparent",
                 }}
                 onMouseEnter={(e) => {
                   if (props.value !== opt.value) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-accent)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor =
+                      "var(--color-accent)";
                     (e.currentTarget as HTMLElement).style.color = "#ffffff";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (props.value !== opt.value) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-                    (e.currentTarget as HTMLElement).style.color = "var(--color-fg)";
+                    (e.currentTarget as HTMLElement).style.backgroundColor =
+                      "transparent";
+                    (e.currentTarget as HTMLElement).style.color =
+                      "var(--color-fg)";
                   }
                 }}
                 onClick={() => {
@@ -140,7 +211,9 @@ function CustomSelect(props: {
 }
 
 function GlobalSettingsForm() {
-  const themeOptions = Object.keys(themes).concat(["custom"]).map(t => ({ label: t, value: t }));
+  const themeOptions = getAllThemeNames()
+    .concat(["custom"])
+    .map((t) => ({ label: t, value: t }));
 
   const updateCustomColor = (key: string, val: string) => {
     setGlobalSettings("customTheme", (prev) => ({ ...prev, [key]: val }));
@@ -152,7 +225,10 @@ function GlobalSettingsForm() {
     saveGlobalSettings();
   };
 
-  const handleNumber = (key: "editorFontSize" | "terminalFontSize", val: number) => {
+  const handleNumber = (
+    key: "editorFontSize" | "terminalFontSize",
+    val: number,
+  ) => {
     setGlobalSettings(key, val);
     saveGlobalSettings();
   };
@@ -165,56 +241,98 @@ function GlobalSettingsForm() {
   return (
     <div class="flex flex-col pb-12">
       <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">Appearance</h2>
-        
-        <SettingRow label="Color Theme" description="Select the overall theme for the editor.">
-          <CustomSelect 
+        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">
+          Appearance
+        </h2>
+
+        <SettingRow
+          label="Color Theme"
+          description="Select the overall theme for the editor."
+        >
+          <CustomSelect
             value={globalSettings.theme}
-            onChange={(v) => { setGlobalSettings("theme", v); saveGlobalSettings(); }}
+            onChange={(v) => {
+              setGlobalSettings("theme", v);
+              saveGlobalSettings();
+            }}
             options={themeOptions}
           />
         </SettingRow>
 
         <Show when={globalSettings.theme === "custom"}>
           <div class="grid grid-cols-2 gap-4 mt-4 p-4 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-            <ColorPicker label="Background" value={globalSettings.customTheme?.bg || "#0B0F00"} onChange={(v) => updateCustomColor("bg", v)} />
-            <ColorPicker label="Secondary Bg" value={globalSettings.customTheme?.bgSecondary || "#111a00"} onChange={(v) => updateCustomColor("bgSecondary", v)} />
-            <ColorPicker label="Foreground" value={globalSettings.customTheme?.fg || "#d4d4d4"} onChange={(v) => updateCustomColor("fg", v)} />
-            <ColorPicker label="Accent" value={globalSettings.customTheme?.accent || "#CDFF07"} onChange={(v) => updateCustomColor("accent", v)} />
-            <ColorPicker label="Border" value={globalSettings.customTheme?.border || "#1e2a00"} onChange={(v) => updateCustomColor("border", v)} />
-            <ColorPicker label="Error" value={globalSettings.customTheme?.error || "#ff4444"} onChange={(v) => updateCustomColor("error", v)} />
+            <ColorPicker
+              label="Background"
+              value={globalSettings.customTheme?.bg || "#0B0F00"}
+              onChange={(v) => updateCustomColor("bg", v)}
+            />
+            <ColorPicker
+              label="Secondary Bg"
+              value={globalSettings.customTheme?.bgSecondary || "#111a00"}
+              onChange={(v) => updateCustomColor("bgSecondary", v)}
+            />
+            <ColorPicker
+              label="Foreground"
+              value={globalSettings.customTheme?.fg || "#d4d4d4"}
+              onChange={(v) => updateCustomColor("fg", v)}
+            />
+            <ColorPicker
+              label="Accent"
+              value={globalSettings.customTheme?.accent || "#CDFF07"}
+              onChange={(v) => updateCustomColor("accent", v)}
+            />
+            <ColorPicker
+              label="Border"
+              value={globalSettings.customTheme?.border || "#1e2a00"}
+              onChange={(v) => updateCustomColor("border", v)}
+            />
+            <ColorPicker
+              label="Error"
+              value={globalSettings.customTheme?.error || "#ff4444"}
+              onChange={(v) => updateCustomColor("error", v)}
+            />
           </div>
         </Show>
       </section>
 
       <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">Editor</h2>
-        
-        <SettingRow label="Word Wrap" description="Controls whether lines should wrap.">
-          <input 
-            type="checkbox" 
-            checked={globalSettings.wordWrap} 
+        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">
+          Editor
+        </h2>
+
+        <SettingRow
+          label="Word Wrap"
+          description="Controls whether lines should wrap."
+        >
+          <input
+            type="checkbox"
+            checked={globalSettings.wordWrap}
             onChange={(e) => handleToggle("wordWrap", e.target.checked)}
             class="w-4 h-4 cursor-pointer"
           />
         </SettingRow>
 
-        <SettingRow label="Font Size" description="Controls the font size in pixels.">
-          <input 
-            type="number" 
+        <SettingRow
+          label="Font Size"
+          description="Controls the font size in pixels."
+        >
+          <input
+            type="number"
             value={globalSettings.editorFontSize}
-            onChange={(e) => handleNumber("editorFontSize", Number(e.target.value))}
+            onChange={(e) =>
+              handleNumber("editorFontSize", Number(e.target.value))
+            }
             class="w-full max-w-[120px] px-3 py-1.5 rounded-md outline-none border text-sm"
             style={{
               background: "var(--color-bg-secondary)",
               color: "var(--color-fg)",
-              "border-color": "var(--color-border)"
+              "border-color": "var(--color-border)",
             }}
           />
         </SettingRow>
 
         <SettingRow label="Font Family" description="Controls the font family.">
-          <CustomSelect 
+          <CustomSelect
             value={globalSettings.editorFontFamily}
             onChange={(v) => handleText("editorFontFamily", v)}
             options={[
@@ -229,18 +347,25 @@ function GlobalSettingsForm() {
       </section>
 
       <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">Terminal</h2>
-        
-        <SettingRow label="Terminal Font Size" description="Controls the font size of the terminal in pixels.">
-          <input 
-            type="number" 
+        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">
+          Terminal
+        </h2>
+
+        <SettingRow
+          label="Terminal Font Size"
+          description="Controls the font size of the terminal in pixels."
+        >
+          <input
+            type="number"
             value={globalSettings.terminalFontSize}
-            onChange={(e) => handleNumber("terminalFontSize", Number(e.target.value))}
+            onChange={(e) =>
+              handleNumber("terminalFontSize", Number(e.target.value))
+            }
             class="w-full max-w-[120px] px-3 py-1.5 rounded-md outline-none border text-sm"
             style={{
               background: "var(--color-bg-secondary)",
               color: "var(--color-fg)",
-              "border-color": "var(--color-border)"
+              "border-color": "var(--color-border)",
             }}
           />
         </SettingRow>
@@ -249,11 +374,15 @@ function GlobalSettingsForm() {
   );
 }
 
-function ColorPicker(props: { label: string; value: string; onChange: (v: string) => void }) {
+function ColorPicker(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div class="flex items-center gap-3">
-      <input 
-        type="color" 
+      <input
+        type="color"
         value={props.value}
         onInput={(e) => props.onChange(e.target.value)}
         class="w-8 h-8 p-0 border-0 rounded cursor-pointer"
@@ -265,9 +394,15 @@ function ColorPicker(props: { label: string; value: string; onChange: (v: string
 }
 
 function WorkspaceSettingsForm() {
+  const [newExt, setNewExt] = createSignal("");
+  const [newCmd, setNewCmd] = createSignal("");
+
   const handleExcludeItems = (e: Event) => {
     const val = (e.target as HTMLInputElement).value;
-    const items = val.split(",").map(s => s.trim()).filter(Boolean);
+    const items = val
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     setWorkspaceSettings("excludeItems", items);
     saveWorkspaceSettings();
   };
@@ -277,14 +412,47 @@ function WorkspaceSettingsForm() {
     saveWorkspaceSettings();
   };
 
+  const updateRunMapVal = (ext: string, cmd: string) => {
+    setWorkspaceSettings("runMap", (prev) => ({ ...prev, [ext]: cmd }));
+    saveWorkspaceSettings();
+  };
+
+  const removeRunMapVal = (ext: string) => {
+    setWorkspaceSettings("runMap", (prev) => {
+      const copy = { ...prev };
+      delete copy[ext];
+      return copy;
+    });
+    saveWorkspaceSettings();
+  };
+
+  const addRunMapVal = () => {
+    const ext = newExt().trim();
+    const cmd = newCmd().trim();
+    if (!ext || !cmd) return;
+    const formattedExt = ext.startsWith(".") ? ext : `.${ext}`;
+    setWorkspaceSettings("runMap", (prev) => ({
+      ...prev,
+      [formattedExt]: cmd,
+    }));
+    saveWorkspaceSettings();
+    setNewExt("");
+    setNewCmd("");
+  };
+
   return (
     <div class="flex flex-col pb-12">
       <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">File Explorer</h2>
-        
-        <SettingRow label="Exclude Items" description="Comma-separated list of files and folders to hide from the file tree.">
-          <input 
-            type="text" 
+        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">
+          File Explorer
+        </h2>
+
+        <SettingRow
+          label="Exclude Items"
+          description="Comma-separated list of files and folders to hide from the file tree."
+        >
+          <input
+            type="text"
             value={workspaceSettings.excludeItems.join(", ")}
             onChange={handleExcludeItems}
             placeholder=".git, node_modules"
@@ -292,18 +460,23 @@ function WorkspaceSettingsForm() {
             style={{
               background: "var(--color-bg-secondary)",
               color: "var(--color-fg)",
-              "border-color": "var(--color-border)"
+              "border-color": "var(--color-border)",
             }}
           />
         </SettingRow>
       </section>
 
       <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">Build & Run</h2>
-        
-        <SettingRow label="Run Command" description="The command executed when clicking the Play button.">
-          <input 
-            type="text" 
+        <h2 class="text-xl font-semibold mb-2 text-[var(--color-accent)]">
+          Build & Run
+        </h2>
+
+        <SettingRow
+          label="Run Command"
+          description="The command executed when clicking the Play button."
+        >
+          <input
+            type="text"
             value={workspaceSettings.runCommand}
             onChange={handleRunCommand}
             placeholder="npm run dev"
@@ -311,10 +484,87 @@ function WorkspaceSettingsForm() {
             style={{
               background: "var(--color-bg-secondary)",
               color: "var(--color-fg)",
-              "border-color": "var(--color-border)"
+              "border-color": "var(--color-border)",
             }}
           />
         </SettingRow>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-[var(--color-accent)]">
+          File Run Mappings
+        </h2>
+        <div class="flex flex-col gap-3 p-4 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+          <div class="grid grid-cols-12 gap-2 font-medium text-xs text-[var(--color-fg-muted)] pb-2 border-b border-[var(--color-border)]">
+            <div class="col-span-3">Extension</div>
+            <div class="col-span-8">Run Command</div>
+            <div class="col-span-1 text-right font-semibold">Action</div>
+          </div>
+
+          <For each={Object.entries(workspaceSettings.runMap || {})}>
+            {([ext, cmd]) => (
+              <div class="grid grid-cols-12 gap-2 items-center text-sm py-1">
+                <div class="col-span-3 font-mono">{ext}</div>
+                <input
+                  type="text"
+                  value={cmd}
+                  onChange={(e) => updateRunMapVal(ext, e.target.value)}
+                  class="col-span-8 px-2 py-1 rounded border text-xs font-mono"
+                  style={{
+                    background: "var(--color-bg)",
+                    color: "var(--color-fg)",
+                    "border-color": "var(--color-border)",
+                  }}
+                />
+                <button
+                  onClick={() => removeRunMapVal(ext)}
+                  class="col-span-1 text-xs text-red-500 hover:text-red-700 cursor-pointer text-center bg-transparent border-0 font-semibold"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </For>
+
+          {/* Add Row */}
+          <div class="grid grid-cols-12 gap-2 items-center pt-3 border-t border-[var(--color-border)]">
+            <input
+              type="text"
+              placeholder=".py"
+              value={newExt()}
+              onInput={(e) => setNewExt(e.currentTarget.value)}
+              class="col-span-3 px-2 py-1 rounded border text-xs font-mono"
+              style={{
+                background: "var(--color-bg)",
+                color: "var(--color-fg)",
+                "border-color": "var(--color-border)",
+              }}
+            />
+            <input
+              type="text"
+              placeholder='python "{file}"'
+              value={newCmd()}
+              onInput={(e) => setNewCmd(e.currentTarget.value)}
+              class="col-span-7 px-2 py-1 rounded border text-xs font-mono"
+              style={{
+                background: "var(--color-bg)",
+                color: "var(--color-fg)",
+                "border-color": "var(--color-border)",
+              }}
+            />
+            <button
+              onClick={addRunMapVal}
+              class="col-span-2 px-2 py-1 rounded text-xs transition-colors cursor-pointer font-semibold"
+              style={{
+                background: "var(--color-accent-dim, rgba(205, 255, 7, 0.15))",
+                color: "var(--color-accent, #CDFF07)",
+                border: "1px solid var(--color-accent, #CDFF07)",
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );
