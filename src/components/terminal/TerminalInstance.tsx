@@ -55,17 +55,6 @@ export function TerminalInstance(props: TerminalInstanceProps) {
           return false;
         }
       }
-      if (isModifier && arg.code === "KeyV" && arg.type === "keydown") {
-        navigator.clipboard.readText().then((text) => {
-          if (text) {
-            invoke("send_terminal_input", {
-              termId: props.id,
-              input: text,
-            }).catch(console.error);
-          }
-        });
-        return false;
-      }
       return true;
     });
 
@@ -131,10 +120,31 @@ export function TerminalInstance(props: TerminalInstanceProps) {
     }, 300);
   }
 
+  function handleContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    if (!term) return;
+    const selection = term.getSelection();
+    if (selection) {
+      navigator.clipboard.writeText(selection).then(() => {
+        term?.clearSelection();
+      });
+    } else {
+      navigator.clipboard.readText().then((text) => {
+        if (text) {
+          invoke("send_terminal_input", {
+            termId: props.id,
+            input: text,
+          }).catch(console.error);
+        }
+      });
+    }
+  }
+
   onMount(() => {
     initTerminal();
     window.addEventListener("resize", handleResize);
     window.addEventListener("rune-run-script", handleRunScriptEvent);
+    terminalRef?.addEventListener("contextmenu", handleContextMenu);
 
     // Watch for direct container resizes (e.g., from user dragging the splitter)
     resizeObserver = new ResizeObserver(() => {
@@ -148,6 +158,7 @@ export function TerminalInstance(props: TerminalInstanceProps) {
   onCleanup(() => {
     window.removeEventListener("resize", handleResize);
     window.removeEventListener("rune-run-script", handleRunScriptEvent);
+    terminalRef?.removeEventListener("contextmenu", handleContextMenu);
     resizeObserver?.disconnect();
     unlistenOutput?.();
     unlistenExit?.();

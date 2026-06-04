@@ -163,6 +163,8 @@ function shouldSkip(name: string, relPath: string): boolean {
 
 const STORAGE_KEY = "rune-last-folder";
 
+const [isWatchingPaused, setWatchingPaused] = createSignal(false);
+
 export function useFileSystem() {
   const isFreshWindow = new URLSearchParams(window.location.search).has(
     "fresh",
@@ -368,7 +370,7 @@ export function useFileSystem() {
     }
 
     const content = await readTextFile(filePath);
-    return { content, language: fileExtensionToLanguage(ext), fileType };
+    return { content: content, language: fileExtensionToLanguage(ext), fileType };
   }
 
   async function writeFileContent(
@@ -428,36 +430,42 @@ export function useFileSystem() {
   }
 
   async function refreshPreservingExpanded() {
+    if (isWatchingPaused()) return;
     const root = rootPath();
     if (!root) return;
-    const expandedPaths = collectExpandedPaths(tree());
-    const freshEntries = await readDirectory(root);
+    setLoading(true);
+    try {
+      const entries = await readDirectory(root);
+      const expandedPaths = collectExpandedPaths(tree());
 
-    async function applyExpanded(entries: FileEntry[]): Promise<FileEntry[]> {
-      const result: FileEntry[] = [];
-      for (const e of entries) {
-        if (e.isDirectory && expandedPaths.has(e.path)) {
-          startWatching(e.path);
-          const children = await readDirectory(e.path);
-          result.push({
-            ...e,
-            isExpanded: true,
-            children: await applyExpanded(children),
-          });
-        } else {
-          result.push(e);
+      async function applyExpanded(entries: FileEntry[]): Promise<FileEntry[]> {
+        const result: FileEntry[] = [];
+        for (const e of entries) {
+          if (e.isDirectory && expandedPaths.has(e.path)) {
+            startWatching(e.path);
+            const children = await readDirectory(e.path);
+            result.push({
+              ...e,
+              isExpanded: true,
+              children: await applyExpanded(children),
+            });
+          } else {
+            result.push(e);
+          }
+        }
+        return sortEntries(result);
+      }
+
+      setTree(await applyExpanded(entries));
+      // Prune watchers for directories that might have been deleted externally
+      const currentExpanded = collectExpandedPaths(tree());
+      for (const watchedPath of activeWatchers.keys()) {
+        if (watchedPath !== root && !currentExpanded.has(watchedPath)) {
+          stopWatching(watchedPath);
         }
       }
-      return sortEntries(result);
-    }
-
-    setTree(await applyExpanded(freshEntries));
-    // Prune watchers for directories that might have been deleted externally
-    const currentExpanded = collectExpandedPaths(tree());
-    for (const watchedPath of activeWatchers.keys()) {
-      if (watchedPath !== root && !currentExpanded.has(watchedPath)) {
-        stopWatching(watchedPath);
-      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -562,6 +570,7 @@ export function useFileSystem() {
   }
 
   return {
+    isWatchingPaused,
     rootPath,
     tree,
     loading,
@@ -573,10 +582,13 @@ export function useFileSystem() {
     writeFileContent,
     createNewFile,
     createNewFolder,
-    deleteFile,
-    renameEntry,
-    collapseAll,
+    setWatchingPaused,
+    readDirectory,
     refreshTree,
+    activeWatchers,
+    collapseAll,
+    renameEntry,
+    deleteFile,
     init,
   };
 }

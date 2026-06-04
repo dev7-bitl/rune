@@ -59,6 +59,10 @@ export function MainLayout() {
     new Set(),
   );
 
+  createEffect(() => {
+    fs.setWatchingPaused(!!editingItem());
+  });
+
   function showContextMenu(x: number, y: number, items: ContextMenuItem[]) {
     setCtxMenu({ x, y, items });
   }

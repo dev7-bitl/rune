@@ -424,15 +424,25 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
       {
         label: "Cut",
         action: () => {
-          view?.focus();
-          document.execCommand("cut");
+          if (!view) return;
+          const state = view.state;
+          const text = state.sliceDoc(state.selection.main.from, state.selection.main.to);
+          if (text) {
+            navigator.clipboard.writeText(text).then(() => {
+              if (view) view.dispatch(view.state.replaceSelection(""));
+            });
+          }
         },
       },
       {
         label: "Copy",
         action: () => {
-          view?.focus();
-          document.execCommand("copy");
+          if (!view) return;
+          const state = view.state;
+          const text = state.sliceDoc(state.selection.main.from, state.selection.main.to);
+          if (text) {
+            navigator.clipboard.writeText(text);
+          }
         },
       },
       {
