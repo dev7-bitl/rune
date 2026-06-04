@@ -10,31 +10,31 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
 
   return (
     <div
-      class="flex-1 flex flex-col items-center justify-center p-8 md:p-12 overflow-y-auto"
+      class="@container flex-1 flex flex-col items-center justify-center p-4 sm:p-8 @3xl:p-12 overflow-y-auto"
       style={{ background: "var(--color-bg)" }}
     >
-      <div class="max-w-[760px] w-full flex flex-col gap-12 my-auto">
+      <div class="max-w-[760px] w-full flex flex-col gap-8 @3xl:gap-12 my-auto">
         {/* Header */}
         <div class="flex flex-col items-center text-center">
           <img
             src="/logo.svg"
             alt="Rune Logo"
-            class="w-16 h-16 mb-4 select-none pointer-events-none rounded-2xl"
+            class="w-12 h-12 @3xl:w-16 @3xl:h-16 mb-4 select-none pointer-events-none rounded-2xl"
             style={{ "box-shadow": "0 0 20px var(--color-border)" }}
           />
-          <h1 class="text-3xl font-light tracking-[0.3em] uppercase text-[var(--color-fg)]">
+          <h1 class="text-2xl @3xl:text-3xl font-light tracking-[0.3em] uppercase text-[var(--color-fg)]">
             Rune
           </h1>
-          <p class="text-sm font-light tracking-wide mt-2 text-[var(--color-fg-muted)]">
+          <p class="text-xs @3xl:text-sm font-light tracking-wide mt-2 text-[var(--color-fg-muted)]">
             A lightweight, lightning-fast code editor
           </p>
         </div>
 
         {/* Main Content Grid */}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div class="grid grid-cols-1 @3xl:grid-cols-2 gap-6 @3xl:gap-8 items-start">
           {/* Left Column - Actions */}
           <div class="flex flex-col gap-3">
-            <h2 class="text-xs uppercase tracking-[0.2em] font-semibold text-[var(--color-fg-muted)] mb-1">
+            <h2 class="text-[10px] @3xl:text-xs uppercase tracking-[0.2em] font-semibold text-[var(--color-fg-muted)] mb-1">
               Start
             </h2>
             <button
@@ -77,19 +77,19 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
               </div>
-              <div>
+              <div class="min-w-0 flex-1">
                 <span
-                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block"
+                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block truncate"
                   style={{ color: "var(--color-fg)" }}
                 >
                   New File
                 </span>
-                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block">
+                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block truncate">
                   Create a new scratchpad file
                 </span>
               </div>
               <kbd
-                class="ml-auto text-[10px] px-2 py-1 rounded font-mono"
+                class="ml-auto text-[10px] px-2 py-1 rounded font-mono hidden @sm:block shrink-0"
                 style={{
                   background: "var(--color-bg)",
                   border: "1px solid var(--color-border)",
@@ -137,19 +137,19 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
-              <div>
+              <div class="min-w-0 flex-1">
                 <span
-                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block"
+                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block truncate"
                   style={{ color: "var(--color-fg)" }}
                 >
                   Open Folder
                 </span>
-                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block">
+                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block truncate">
                   Open an existing workspace
                 </span>
               </div>
               <kbd
-                class="ml-auto text-[10px] px-2 py-1 rounded font-mono"
+                class="ml-auto text-[10px] px-2 py-1 rounded font-mono hidden @sm:block shrink-0"
                 style={{
                   background: "var(--color-bg)",
                   border: "1px solid var(--color-border)",
@@ -198,19 +198,19 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   <line x1="12" y1="19" x2="20" y2="19" />
                 </svg>
               </div>
-              <div>
+              <div class="min-w-0 flex-1">
                 <span
-                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block"
+                  class="text-sm font-medium text-[var(--color-fg)] transition-colors block truncate"
                   style={{ color: "var(--color-fg)" }}
                 >
                   Command Palette
                 </span>
-                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block">
+                <span class="text-xs text-[var(--color-fg-muted)] mt-0.5 block truncate">
                   Run commands and search tools
                 </span>
               </div>
               <kbd
-                class="ml-auto text-[10px] px-2 py-1 rounded font-mono"
+                class="ml-auto text-[10px] px-2 py-1 rounded font-mono hidden @sm:block shrink-0"
                 style={{
                   background: "var(--color-bg)",
                   border: "1px solid var(--color-border)",
@@ -224,7 +224,7 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
 
           {/* Right Column - Shortcuts */}
           <div class="flex flex-col gap-3">
-            <h2 class="text-xs uppercase tracking-[0.2em] font-semibold text-[var(--color-fg-muted)] mb-1">
+            <h2 class="text-[10px] @3xl:text-xs uppercase tracking-[0.2em] font-semibold text-[var(--color-fg-muted)] mb-1">
               Keyboard Shortcuts
             </h2>
             <div
@@ -240,11 +240,11 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   "border-bottom": "1px solid var(--color-border)",
                 }}
               >
-                <span style={{ color: "var(--color-fg-muted)" }}>
+                <span class="truncate mr-2 min-w-0 flex-1" style={{ color: "var(--color-fg-muted)" }}>
                   New Window
                 </span>
                 <kbd
-                  class="px-2 py-0.5 rounded font-mono"
+                  class="px-2 py-0.5 rounded font-mono shrink-0 hidden @sm:block"
                   style={{
                     background: "var(--color-bg)",
                     border: "1px solid var(--color-border)",
@@ -260,11 +260,11 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   "border-bottom": "1px solid var(--color-border)",
                 }}
               >
-                <span style={{ color: "var(--color-fg-muted)" }}>
+                <span class="truncate mr-2 min-w-0 flex-1" style={{ color: "var(--color-fg-muted)" }}>
                   Save Document
                 </span>
                 <kbd
-                  class="px-2 py-0.5 rounded font-mono"
+                  class="px-2 py-0.5 rounded font-mono shrink-0 hidden @sm:block"
                   style={{
                     background: "var(--color-bg)",
                     border: "1px solid var(--color-border)",
@@ -280,11 +280,11 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   "border-bottom": "1px solid var(--color-border)",
                 }}
               >
-                <span style={{ color: "var(--color-fg-muted)" }}>
+                <span class="truncate mr-2 min-w-0 flex-1" style={{ color: "var(--color-fg-muted)" }}>
                   Find in Workspace
                 </span>
                 <kbd
-                  class="px-2 py-0.5 rounded font-mono"
+                  class="px-2 py-0.5 rounded font-mono shrink-0 hidden @sm:block"
                   style={{
                     background: "var(--color-bg)",
                     border: "1px solid var(--color-border)",
@@ -300,11 +300,11 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                   "border-bottom": "1px solid var(--color-border)",
                 }}
               >
-                <span style={{ color: "var(--color-fg-muted)" }}>
+                <span class="truncate mr-2 min-w-0 flex-1" style={{ color: "var(--color-fg-muted)" }}>
                   Toggle Sidebar
                 </span>
                 <kbd
-                  class="px-2 py-0.5 rounded font-mono"
+                  class="px-2 py-0.5 rounded font-mono shrink-0 hidden @sm:block"
                   style={{
                     background: "var(--color-bg)",
                     border: "1px solid var(--color-border)",
@@ -315,11 +315,11 @@ export function WelcomeScreen(props: WelcomeScreenProps) {
                 </kbd>
               </div>
               <div class="flex justify-between items-center text-xs">
-                <span style={{ color: "var(--color-fg-muted)" }}>
+                <span class="truncate mr-2 min-w-0 flex-1" style={{ color: "var(--color-fg-muted)" }}>
                   Zoom In / Out
                 </span>
                 <kbd
-                  class="px-2 py-0.5 rounded font-mono"
+                  class="px-2 py-0.5 rounded font-mono shrink-0 hidden @sm:block"
                   style={{
                     background: "var(--color-bg)",
                     border: "1px solid var(--color-border)",

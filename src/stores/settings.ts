@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
 import { invoke } from "@tauri-apps/api/core";
 import { readTextFile, writeTextFile, mkdir } from "@tauri-apps/plugin-fs";
@@ -15,6 +16,8 @@ export interface GlobalSettings {
   editorFontFamily: string;
   wordWrap: boolean;
   terminalFontSize: number;
+  defaultZoom: number;
+  fileAssociations?: Record<string, "text" | "image" | "pdf" | "markdown">;
 }
 
 export interface WorkspaceSettings {
@@ -29,6 +32,8 @@ const DEFAULT_GLOBAL: GlobalSettings = {
   editorFontFamily: "Consolas",
   wordWrap: true,
   terminalFontSize: 12,
+  defaultZoom: 1,
+  fileAssociations: {},
 };
 
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
@@ -182,8 +187,6 @@ export async function saveWorkspaceSettings() {
   }
 }
 
-import { createSignal } from "solid-js";
-
 function createSettingsStore() {
   const [sidebarVisible, setSidebarVisible] = createSignal(true);
   const [sidebarWidth, setSidebarWidth] = createSignal(250);
@@ -195,25 +198,31 @@ function createSettingsStore() {
     setSidebarVisible(!sidebarVisible());
   }
 
+  function applyZoom(level: number) {
+    document.documentElement.style.setProperty("--app-zoom", level.toString());
+    setGlobalSettings("defaultZoom", level);
+    saveGlobalSettings();
+  }
+
   function zoomIn() {
-    setZoomLevel((z) => Math.min(z + 0.1, 2));
-    document.documentElement.style.setProperty(
-      "--app-zoom",
-      zoomLevel().toString(),
-    );
+    setZoomLevel((z) => Math.round((Math.min(z + 0.1, 2)) * 10) / 10);
+    applyZoom(zoomLevel());
   }
 
   function zoomOut() {
-    setZoomLevel((z) => Math.max(z - 0.1, 0.5));
-    document.documentElement.style.setProperty(
-      "--app-zoom",
-      zoomLevel().toString(),
-    );
+    setZoomLevel((z) => Math.round((Math.max(z - 0.1, 0.5)) * 10) / 10);
+    applyZoom(zoomLevel());
   }
 
   function zoomReset() {
     setZoomLevel(1);
-    document.documentElement.style.setProperty("--app-zoom", "1");
+    applyZoom(zoomLevel());
+  }
+
+  function setZoomTo(level: number) {
+    const rounded = Math.round(level * 10) / 10;
+    setZoomLevel(rounded);
+    applyZoom(rounded);
   }
 
   return {
@@ -229,6 +238,8 @@ function createSettingsStore() {
     zoomIn,
     zoomOut,
     zoomReset,
+    zoomLevel,
+    setZoomTo,
   };
 }
 

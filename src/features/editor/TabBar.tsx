@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import type { Tab as TabType } from "../../types";
 import { Tab } from "./Tab";
+import { tabStore } from "../../stores/tabs";
 
 interface TabBarProps {
   tabs: TabType[];
@@ -32,6 +33,27 @@ export function TabBar(props: TabBarProps) {
           "border-bottom": "1px solid var(--color-border)",
           "scrollbar-width": "none",
         }}
+        onDragEnter={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const sourceTabId = e.dataTransfer?.getData("application/rune-tab");
+          if (sourceTabId) {
+            // Drop on the container means move to the end of this pane
+            // We can determine the pane by looking at the last tab in this tabbar
+            const lastTab = props.tabs[props.tabs.length - 1];
+            if (lastTab && lastTab.id !== sourceTabId) {
+              // We'll just reorder it to the position of the last tab, but actually we want it AFTER the last tab.
+              // Wait, reorderTabs just inserts it at the target index. If we target the last tab, it goes before/at the last tab.
+              // To make it go at the very end, we can pass a special flag or just do it in tabStore.
+              // For simplicity, dropping on the container can just move it to the last tab's position.
+              tabStore.reorderTabs(sourceTabId, lastTab.id);
+            }
+          }
+        }}
       >
         <For each={props.tabs}>
           {(tab) => (
@@ -46,6 +68,9 @@ export function TabBar(props: TabBarProps) {
               onContextMenu={(e) => {
                 e.preventDefault();
                 props.onTabContextMenu(tab.id, e);
+              }}
+              onDragDrop={(sourceId, targetId) => {
+                tabStore.reorderTabs(sourceId, targetId);
               }}
             />
           )}

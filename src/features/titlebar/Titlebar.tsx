@@ -47,7 +47,7 @@ export function Titlebar(props: TitlebarProps) {
             >
               <span
                 innerHTML={item.icon}
-                class="flex items-center justify-center"
+                class="flex items-center justify-center svg-icon-wrapper"
                 style={{ width: "14px", height: "14px" }}
               />
             </button>

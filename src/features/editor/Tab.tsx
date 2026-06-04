@@ -8,6 +8,7 @@ interface TabProps {
   onClick: () => void;
   onClose: (e: MouseEvent) => void;
   onContextMenu?: (e: MouseEvent) => void;
+  onDragDrop?: (sourceTabId: string, targetTabId: string) => void;
 }
 
 export function Tab(props: TabProps) {
@@ -26,6 +27,24 @@ export function Tab(props: TabProps) {
       }}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer?.setData("application/rune-tab", props.tab.id);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragEnter={(e) => e.preventDefault()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sourceTabId = e.dataTransfer?.getData("application/rune-tab");
+        if (sourceTabId && sourceTabId !== props.tab.id) {
+          props.onDragDrop?.(sourceTabId, props.tab.id);
+        }
+      }}
     >
       <FileIcon name={props.tab.fileName} isDirectory={false} />
 

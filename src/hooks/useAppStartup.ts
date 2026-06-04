@@ -1,5 +1,5 @@
 import { onMount } from "solid-js";
-import { loadAllSettings } from "../stores/settings";
+import { loadAllSettings, globalSettings, settingsStore } from "../stores/settings";
 import { initPlugins } from "../plugins";
 
 interface AppStartupOptions {
@@ -103,6 +103,11 @@ export function useAppStartup(options: AppStartupOptions) {
       console.log(
         `[rune] loadAllSettings done: ${Math.round(performance.now() - t0)}ms`,
       );
+      // Apply persisted zoom after settings are loaded from disk
+      const savedZoom = globalSettings.defaultZoom;
+      if (savedZoom && savedZoom !== 1) {
+        settingsStore.setZoomTo(savedZoom);
+      }
     });
 
     (async () => {

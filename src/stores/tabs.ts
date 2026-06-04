@@ -198,12 +198,12 @@ function markTabClean(tabId: string) {
 
 function getActiveTab(): Tab | undefined {
   const id = activeTabId();
-  return id ? tabs().find((t) => t.id === id) : undefined;
+  return id ? tabs().find((t) => t.id === id && t.pane === "left") : undefined;
 }
 
 function getRightActiveTab(): Tab | undefined {
   const id = rightActiveTabId();
-  return id ? tabs().find((t) => t.id === id) : undefined;
+  return id ? tabs().find((t) => t.id === id && t.pane === "right") : undefined;
 }
 
 function getFocusedTab(): Tab | undefined {
@@ -239,11 +239,50 @@ function updateTabAfterSave(tabId: string, filePath: string, fileName: string) {
   );
 }
 
-function moveTabToPane(tabId: string, targetPane: PaneSide) {
-  const tab = tabs().find((t) => t.id === tabId);
-  if (!tab || tab.pane === targetPane) return;
+function reorderTabs(sourceTabId: string, targetTabId: string) {
+  if (sourceTabId === targetTabId) return;
+  setTabs((prev) => {
+    const sourceIndex = prev.findIndex((t) => t.id === sourceTabId);
+    const targetIndex = prev.findIndex((t) => t.id === targetTabId);
+    if (sourceIndex === -1 || targetIndex === -1) return prev;
 
-  // Remove from old pane, add to new pane
+    const sourceTab = prev[sourceIndex];
+    const targetTab = prev[targetIndex];
+    
+    const newTabs = [...prev];
+    newTabs.splice(sourceIndex, 1);
+    
+    const updatedSource = { ...sourceTab, pane: targetTab.pane };
+    const insertIndex = sourceIndex < targetIndex ? targetIndex : targetIndex;
+    
+    newTabs.splice(insertIndex, 0, updatedSource);
+    return newTabs;
+  });
+
+  const tab = tabs().find((t) => t.id === sourceTabId);
+  if (tab) {
+    if (tab.pane === "left") {
+      setActiveTabId(tab.id);
+      setFocusedPane("left");
+      if (rightActiveTabId() === tab.id) {
+        const rTabs = tabs().filter((t) => t.pane === "right");
+        setRightActiveTabId(rTabs[rTabs.length - 1]?.id ?? null);
+      }
+    } else {
+      setRightActiveTabId(tab.id);
+      setFocusedPane("right");
+      if (activeTabId() === tab.id) {
+        const lTabs = tabs().filter((t) => t.pane === "left");
+        setActiveTabId(lTabs[lTabs.length - 1]?.id ?? null);
+      }
+    }
+  }
+}
+
+function moveTabToPane(tabId: string, targetPane: PaneSide) {
+  const tabToMove = tabs().find((t) => t.id === tabId);
+  if (!tabToMove || tabToMove.pane === targetPane) return;
+
   setTabs((prev) =>
     prev.map((t) => (t.id === tabId ? { ...t, pane: targetPane } : t)),
   );
@@ -341,6 +380,8 @@ export const tabStore = {
   updateTabAfterSave,
   closeTab,
   closeOtherTabs,
+  moveTabToPane,
+  reorderTabs,
   closeTabsToRight,
   closeAllTabs,
   closeTabsForPath,
@@ -352,7 +393,6 @@ export const tabStore = {
   getFocusedTab,
   setActiveTab,
   setActiveTabForPane,
-  moveTabToPane,
   leftTabs,
   rightTabs,
   saveTabsToStorage,

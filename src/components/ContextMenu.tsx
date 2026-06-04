@@ -119,7 +119,7 @@ export function ContextMenu(props: ContextMenuProps) {
                         }
                       >
                         <div
-                          class="w-[14px] h-[14px] flex items-center justify-center"
+                          class="w-[14px] h-[14px] flex items-center justify-center svg-icon-wrapper"
                           innerHTML={item.icon}
                         />
                       </Show>

@@ -166,7 +166,21 @@ impl WorkspaceIndexer {
 
 fn should_ignore(path: &Path) -> bool {
     let name = path.file_name().unwrap_or_default().to_string_lossy();
-    name == "node_modules" || name == ".git" || name == "target" || name.starts_with('.') || name.ends_with(".png") || name.ends_with(".jpg") || name.ends_with(".lock")
+    
+    // Ignore common build directories and hidden folders
+    if name == "node_modules" || name == ".git" || name == "target" || name.starts_with('.') || name == "dist" || name == "build" || name == "__pycache__" || name == "vendor" {
+        return true;
+    }
+    
+    // Ignore common binary extensions and lock files
+    let ext = path.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+    matches!(
+        ext.as_str(),
+        "png" | "jpg" | "jpeg" | "gif" | "ico" | "svg" | "webp" | 
+        "exe" | "dll" | "so" | "dylib" | "wasm" | "bin" | "class" | 
+        "zip" | "tar" | "gz" | "7z" | "rar" | 
+        "mp4" | "mp3" | "wav" | "ogg" | "pdf" | "lock"
+    )
 }
 
 pub fn scan_workspace(workspace_path: String, indexer: Arc<Mutex<IndexerState>>, app: AppHandle) {
@@ -176,17 +190,35 @@ pub fn scan_workspace(workspace_path: String, indexer: Arc<Mutex<IndexerState>>,
         let mut dirs_to_visit = vec![PathBuf::from(&workspace_path)];
         let mut files_to_read = Vec::new();
 
+        let workspace_canon = match std::fs::canonicalize(&workspace_path) {
+            Ok(c) => c,
+            Err(_) => PathBuf::from(&workspace_path),
+        };
+
         while let Some(dir) = dirs_to_visit.pop() {
-            if let Ok(entries) = fs::read_dir(dir) {
+            if let Ok(entries) = fs::read_dir(&dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
+                    
+                    // Do not follow symlinks to prevent indexing outside workspace
+                    if let Ok(metadata) = path.symlink_metadata() {
+                        if metadata.is_symlink() {
+                            continue;
+                        }
+                    }
+
                     if should_ignore(&path) {
                         continue;
                     }
+                    
                     if path.is_dir() {
-                        dirs_to_visit.push(path);
+                        // Ensure the path is within the workspace to prevent escaping via NTFS junctions
+                        if let Ok(canon) = std::fs::canonicalize(&path) {
+                            if canon.starts_with(&workspace_canon) {
+                                dirs_to_visit.push(path);
+                            }
+                        }
                     } else if path.is_file() {
-                        // basic check for text file extension or size?
                         // Just push all non-ignored files
                         if let Ok(metadata) = path.metadata() {
                             if metadata.len() < 2_000_000 { // skip files > 2MB

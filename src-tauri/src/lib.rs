@@ -113,8 +113,14 @@ fn start_terminal(
         pixel_height: 0,
     }).map_err(|e| e.to_string())?;
 
+    #[cfg(target_os = "windows")]
     let mut cmd = CommandBuilder::new("powershell.exe");
+    #[cfg(target_os = "windows")]
     cmd.args(["-NoLogo"]);
+
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = CommandBuilder::new("bash");
+
     if let Some(path) = cwd {
         cmd.cwd(path);
     }
@@ -408,6 +414,7 @@ pub fn run() {
                     let _ = tauri::WebviewWindowBuilder::new(app, &label, tauri::WebviewUrl::App("index.html".into()))
                         .title("Rune")
                         .inner_size(1280.0, 800.0)
+                        .min_inner_size(800.0, 500.0)
                         .decorations(false)
                         .build();
                 }

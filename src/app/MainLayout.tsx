@@ -1,14 +1,14 @@
 import { createSignal, createEffect, Show, onMount, onCleanup } from "solid-js";
 import { Titlebar } from "../features/titlebar";
 import { FileTree } from "../features/file-tree";
-import { Editor, TabBar } from "../features/editor";
+import { EditorPane } from "./EditorPane";
 import { ContextMenu, type ContextMenuItem } from "../components/ContextMenu";
 import { CommandPalette } from "../components/CommandPalette";
 import { WelcomeScreen } from "../features/welcome/WelcomeScreen";
 import { QuickPick } from "../components/QuickPick";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { WorkspaceSearch } from "../components/WorkspaceSearch";
-import { TerminalPanel } from "../components/TerminalPanel";
+import { TerminalPanel } from "../components/terminal/TerminalPanel";
 
 import { useFileSystem } from "../hooks/useFileSystem";
 import { useAppStartup } from "../hooks/useAppStartup";
@@ -263,11 +263,10 @@ export function MainLayout() {
   };
 
   const leftActiveTab = () => tabStore.getActiveTab();
-  const rightActiveTab = () => tabStore.getRightActiveTab();
 
   return (
     <div
-      class="h-screen w-screen flex flex-col overflow-hidden"
+      class="h-full w-full flex flex-col overflow-hidden"
       style={{ background: "var(--color-bg)", color: "var(--color-fg)" }}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -341,54 +340,15 @@ export function MainLayout() {
           <div class="flex-1 flex flex-col overflow-hidden">
             <div class="flex-1 flex overflow-hidden">
               {/* Left Pane */}
-              <div
-                class="flex flex-col overflow-hidden pane-left"
-                style={{
-                  width: settingsStore.splitActive()
-                    ? `${settingsStore.splitWidth()}%`
-                    : "100%",
-                }}
-                onMouseDown={() => tabStore.setFocusedPane("left")}
-              >
-                <TabBar
-                  tabs={tabStore.leftTabs()}
-                  activeTabId={tabStore.activeTabId()}
-                  onTabClick={(id) => tabStore.setActiveTabForPane(id, "left")}
-                  onTabClose={(id) => {
-                    const result = tabStore.closeTab(id);
-                    if (
-                      result.paneCleared === "left" &&
-                      !tabStore.rightTabs().length
-                    ) {
-                      settingsStore.setSplitActive(false);
-                    }
-                  }}
-                  onTabContextMenu={(id, e) =>
-                    handleTabContextMenu(id, "left", e)
-                  }
-                />
-                <Editor
-                  content={leftActiveTab()?.content ?? ""}
-                  language={leftActiveTab()?.language ?? "text"}
-                  isDirty={leftActiveTab()?.isDirty ?? false}
-                  hasOpenFile={!!leftActiveTab()}
-                  onChange={(content) => {
-                    const tab = leftActiveTab();
-                    if (tab) handleEditorChange(content, tab.id);
-                  }}
-                  tabId={leftActiveTab()?.id ?? null}
-                  fileType={leftActiveTab()?.fileType ?? "text"}
-                  dataUrl={leftActiveTab()?.dataUrl}
-                  fileName={leftActiveTab()?.fileName}
-                  onCreateFile={() => tabStore.openUntitledTab()}
-                  onOpenFolder={() => fs.openFolder()}
-                  onOpenCommandPalette={() => {
-                    setPalettePrefix(">");
-                    setShowCommandPalette(true);
-                  }}
-                  onSearchWorkspace={() => setShowWorkspaceSearch(true)}
-                />
-              </div>
+              <EditorPane
+                pane="left"
+                fs={fs}
+                onTabContextMenu={handleTabContextMenu}
+                handleEditorChange={handleEditorChange}
+                setPalettePrefix={setPalettePrefix}
+                setShowCommandPalette={setShowCommandPalette}
+                setShowWorkspaceSearch={setShowWorkspaceSearch}
+              />
 
               {/* Split Divider */}
               <Show when={settingsStore.splitActive()}>
@@ -453,49 +413,15 @@ export function MainLayout() {
 
               {/* Right Pane */}
               <Show when={settingsStore.splitActive()}>
-                <div
-                  class="flex flex-col overflow-hidden pane-right"
-                  style={{ width: `${100 - settingsStore.splitWidth()}%` }}
-                  onMouseDown={() => tabStore.setFocusedPane("right")}
-                >
-                  <TabBar
-                    tabs={tabStore.rightTabs()}
-                    activeTabId={tabStore.rightActiveTabId()}
-                    onTabClick={(id) =>
-                      tabStore.setActiveTabForPane(id, "right")
-                    }
-                    onTabClose={(id) => {
-                      const result = tabStore.closeTab(id);
-                      if (result.paneCleared === "right") {
-                        settingsStore.setSplitActive(false);
-                      }
-                    }}
-                    onTabContextMenu={(id, e) =>
-                      handleTabContextMenu(id, "right", e)
-                    }
-                  />
-                  <Editor
-                    content={rightActiveTab()?.content ?? ""}
-                    language={rightActiveTab()?.language ?? "text"}
-                    isDirty={rightActiveTab()?.isDirty ?? false}
-                    hasOpenFile={!!rightActiveTab()}
-                    onChange={(content) => {
-                      const tab = rightActiveTab();
-                      if (tab) handleEditorChange(content, tab.id);
-                    }}
-                    tabId={rightActiveTab()?.id ?? null}
-                    fileType={rightActiveTab()?.fileType ?? "text"}
-                    dataUrl={rightActiveTab()?.dataUrl}
-                    fileName={rightActiveTab()?.fileName}
-                    onCreateFile={() => tabStore.openUntitledTab()}
-                    onOpenFolder={() => fs.openFolder()}
-                    onOpenCommandPalette={() => {
-                      setPalettePrefix(">");
-                      setShowCommandPalette(true);
-                    }}
-                    onSearchWorkspace={() => setShowWorkspaceSearch(true)}
-                  />
-                </div>
+                <EditorPane
+                  pane="right"
+                  fs={fs}
+                  onTabContextMenu={handleTabContextMenu}
+                  handleEditorChange={handleEditorChange}
+                  setPalettePrefix={setPalettePrefix}
+                  setShowCommandPalette={setShowCommandPalette}
+                  setShowWorkspaceSearch={setShowWorkspaceSearch}
+                />
               </Show>
             </div>
             <Show when={showTerminal()}>

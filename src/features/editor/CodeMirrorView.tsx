@@ -144,11 +144,14 @@ async function globalWordCompletion(
   }
 }
 
+const editorStateCache = new Map<string, EditorState>();
+const languageCompartment = new Compartment();
+const wordWrapCompartment = new Compartment();
+const updateListenerCompartment = new Compartment();
+
 export function CodeMirrorView(props: CodeMirrorViewProps) {
   let containerRef!: HTMLDivElement;
   let view: EditorView | undefined;
-  const languageCompartment = new Compartment();
-  const wordWrapCompartment = new Compartment();
   let currentContent = props.content;
   let settingContent = false;
   let lastTabId = props.tabId;
@@ -177,6 +180,24 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
         console.error,
       );
     }, 1000);
+  }
+
+  function getUpdateListener() {
+    return EditorView.updateListener.of((update) => {
+      if (props.tabId) {
+        editorStateCache.set(props.tabId, update.state);
+      }
+      if (update.docChanged && !settingContent) {
+        const isUserEdit = update.transactions.some(
+          (t) => t.annotation(Transaction.userEvent) !== undefined,
+        );
+        if (isUserEdit) {
+          currentContent = update.state.doc.toString();
+          props.onChange?.(currentContent);
+          scheduleIndexUpdate(currentContent);
+        }
+      }
+    });
   }
 
   function buildExtensions(): Extension[] {
@@ -244,29 +265,39 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
       wordWrapCompartment.of(
         globalSettings.wordWrap ? EditorView.lineWrapping : [],
       ),
+      updateListenerCompartment.of(getUpdateListener()),
       createRuneTheme(),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && !settingContent) {
-          const isUserEdit = update.transactions.some(
-            (t) => t.annotation(Transaction.userEvent) !== undefined,
-          );
-          if (isUserEdit) {
-            currentContent = update.state.doc.toString();
-            props.onChange?.(currentContent);
-            scheduleIndexUpdate(currentContent);
-          }
-        }
-      }),
     ];
   }
 
   onMount(() => {
-    const state = EditorState.create({
-      doc: props.content,
-      extensions: buildExtensions(),
-    });
+    let state: EditorState;
+    const cached = props.tabId ? editorStateCache.get(props.tabId) : undefined;
+    if (cached) {
+      if (cached.doc.toString() === props.content) {
+        state = cached;
+      } else {
+        state = EditorState.create({
+          doc: props.content,
+          extensions: buildExtensions(),
+        });
+      }
+    } else {
+      state = EditorState.create({
+        doc: props.content,
+        extensions: buildExtensions(),
+      });
+    }
 
     view = new EditorView({ state, parent: containerRef });
+    
+    // Always reconfigure the update listener immediately to ensure it closes over the current component's props
+    if (cached) {
+      view.dispatch({
+        effects: updateListenerCompartment.reconfigure(getUpdateListener())
+      });
+    }
+
     view.focus();
     props.onScrollerRef?.(view.scrollDOM);
 
@@ -306,6 +337,9 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
     if (findHandler) {
       window.removeEventListener("rune-editor-find", findHandler);
     }
+    if (view && props.tabId) {
+      editorStateCache.set(props.tabId, view.state);
+    }
     view?.destroy();
     view = undefined;
   });
@@ -335,15 +369,40 @@ export function CodeMirrorView(props: CodeMirrorViewProps) {
     if (!view) return;
     if (currentContent === newContent && tabId === lastTabId) return;
 
-    // Tab switched — reset editor with fresh undo history
+    // Tab switched
     if (tabId !== lastTabId) {
+      if (lastTabId && view) {
+        editorStateCache.set(lastTabId, view.state);
+      }
+      
       lastTabId = tabId;
       currentContent = newContent;
-      const state = EditorState.create({
-        doc: newContent,
-        extensions: buildExtensions(),
-      });
+      
+      const cached = tabId ? editorStateCache.get(tabId) : undefined;
+      let state: EditorState;
+      if (cached) {
+        if (cached.doc.toString() === newContent) {
+          state = cached;
+        } else {
+          state = EditorState.create({
+            doc: newContent,
+            extensions: buildExtensions(),
+          });
+        }
+      } else {
+        state = EditorState.create({
+          doc: newContent,
+          extensions: buildExtensions(),
+        });
+      }
       view.setState(state);
+      
+      // If we loaded from cache, ensure we swap the updateListener to the current component's scope
+      if (cached) {
+        view.dispatch({
+          effects: updateListenerCompartment.reconfigure(getUpdateListener())
+        });
+      }
       return;
     }
 

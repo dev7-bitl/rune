@@ -11,7 +11,7 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { open } from "@tauri-apps/plugin-dialog";
 import { basename } from "@tauri-apps/api/path";
-import { workspaceSettings } from "../stores/settings";
+import { workspaceSettings, globalSettings } from "../stores/settings";
 import type { FileEntry, FileType } from "../types";
 
 function joinPath(...parts: string[]): string {
@@ -28,6 +28,7 @@ const IMAGE_EXTS = new Set([
   "bmp",
   "webp",
   "ico",
+  "avif",
 ]);
 
 function getExt(path: string): string {
@@ -41,6 +42,11 @@ function getExt(path: string): string {
 }
 
 function getFileType(ext: string): FileType {
+  const overrides = globalSettings.fileAssociations;
+  if (overrides && overrides[ext]) {
+    return overrides[ext];
+  }
+
   if (IMAGE_EXTS.has(ext)) return "image";
   if (ext === "pdf") return "pdf";
   if (ext === "md" || ext === "mdx") return "markdown";
@@ -57,6 +63,7 @@ function getMimeType(ext: string): string {
     bmp: "image/bmp",
     webp: "image/webp",
     ico: "image/x-icon",
+    avif: "image/avif",
     pdf: "application/pdf",
   };
   return map[ext] ?? "application/octet-stream";

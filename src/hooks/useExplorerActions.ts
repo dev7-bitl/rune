@@ -248,17 +248,11 @@ export function useExplorerActions(options: ExplorerActionsOptions) {
     setEditingItem(null);
   }
 
-  async function handleSearchResultClick(filePath: string) {
-    const name = filePath.split(/[\\/]/).pop() ?? "";
-    await handleFileClick({ path: filePath, name });
-  }
-
   return {
     deleteSelectedPaths,
     handleFileClick,
     handleFileTreeContextMenu,
     handleEmptyContextMenu,
     handleSubmitEdit,
-    handleSearchResultClick,
   };
 }
