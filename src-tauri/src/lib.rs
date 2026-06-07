@@ -461,8 +461,13 @@ async fn workspace_search(root_path: String, query: String) -> Result<Vec<Search
 
 #[tauri::command]
 fn parse_markdown(text: String) -> String {
-    use pulldown_cmark::{Parser, html};
-    let parser = Parser::new(&text);
+    use pulldown_cmark::{Parser, Options, html};
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TASKLISTS);
+    
+    let parser = Parser::new_ext(&text, options);
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
     html_output
